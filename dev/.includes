@@ -2,6 +2,8 @@ header.js
 
 radio/radio.js
 
+gramophone/block.js
+
 arcade/arcade.js
 
 dendy/dendy.js

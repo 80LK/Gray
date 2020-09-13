@@ -15,8 +15,8 @@ var Tardis = {
     __pos:{},
     spawn:function(){
         Tardis.__pos = Player.getPosition();
-        Tardis.__pos.x += Util.random(-16, 17);
-        Tardis.__pos.z += Util.random(-16, 17);
+        Tardis.__pos.x += Utils.random(-16, 17);
+        Tardis.__pos.z += Utils.random(-16, 17);
         Tardis.__pos.y = GenerationUtils.findHighSurface(Tardis.__pos.x, Tardis.__pos.z);
         
         World.setBlock(Tardis.__pos.x, Tardis.__pos.y, Tardis.__pos.z, BlockID.tardis);

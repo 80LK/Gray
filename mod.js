@@ -2,7 +2,7 @@
 BUILD INFO:
   dir: dev/
   target: mod.js
-  files: 10
+  files: 11
 */
 
 
@@ -103,13 +103,11 @@ var RadioFiles = (function(){
     let ret = [];
     let files = FileTools.GetListOfFiles(__dir__ + "sounds/radio/");
 
-    //for(let i = files.length - 1; i <= 0; i-- )
     for(let i in files)
         ret.push(__dir__+"sounds/radio/" + files[i].getName());
 
     return ret;
 })();
-alert(RadioFiles.length);
 
 ModAPI.registerAPI("RetroWaveRadio", {
     addFile:function(path){
@@ -119,6 +117,80 @@ ModAPI.registerAPI("RetroWaveRadio", {
         RadioFiles = RadioFiles.concat(paths);
     }
 })
+
+
+
+
+// gramophone/block.js
+
+IDRegistry.genBlockID("gramophone");
+Block.createBlock("gramophone", [{
+    name:"Gramophone",
+    texture:[["iron_block", 0]],
+    isCreative:true
+}]);
+//Block.createBlockWithRotateAndModel("gramophone", "Gramophone", "gramophone", "gramophone", { x:0, z:0 }, "iron_block");
+
+TileEntity.registerPrototype("gramophone", {
+    defaultData:{
+        disk:null,
+        playing:false
+    },
+    init:function(){
+        this.player = new Sound();
+        if(this.data.disk)
+            this.player.setSource(GramophoneDisks.getSource(this.data.disk));
+
+        this.soundPlayer.setInBlock(this.x, this.y, this.z, 5);
+    },
+    click:function(id, count, data){
+        if(GramophoneDisks.isDisk(id)){
+            if(this.data.disk)
+                World.drop(coords.x, coords.y+1, coords.z, this.data.disk, 1);
+
+            this.data.disk = id;
+            this.player.setSource(GramophoneDisks.getSource(id));
+            return;
+        }
+        if(this.data.playing){
+            this.player.pause();
+        }else{
+            this.player.play();
+        }
+    },
+    destroy:function(){
+        if(this.data.disk != null){
+            World.drop(coords.x, coords.y+1, coords.z, this.data.disk, 1);
+            this.data.disk = null;
+            return false;
+        }
+
+        return true;
+    }
+});
+
+var GramophoneDisksPrivate = {
+    disks:{},
+};
+
+var GramophoneDisks = {
+    registerDisk:function(id, file){
+        if(GramophoneDisksPrivate.hasOwnProperty(id))
+            throw new Error("Disk with id "+id+" was been registered");
+            
+        GramophoneDisksPrivate[id] = file;
+    },
+    isDisk:function(id){
+        return GramophoneDisksPrivate.hasOwnProperty(id);
+    },
+    getSource:function(id){
+        return GramophoneDisksPrivate[id];
+    }
+};
+
+ModAPI.registerAPI("RetroWaveGramophone", GramophoneDisks);
+
+GramophoneDisks.registerDisk(500, __dit__ + "sounds/disks/13.oga");
 
 
 
@@ -284,8 +356,8 @@ var Tardis = {
     __pos:{},
     spawn:function(){
         Tardis.__pos = Player.getPosition();
-        Tardis.__pos.x += Util.random(-16, 17);
-        Tardis.__pos.z += Util.random(-16, 17);
+        Tardis.__pos.x += Utils.random(-16, 17);
+        Tardis.__pos.z += Utils.random(-16, 17);
         Tardis.__pos.y = GenerationUtils.findHighSurface(Tardis.__pos.x, Tardis.__pos.z);
         
         World.setBlock(Tardis.__pos.x, Tardis.__pos.y, Tardis.__pos.z, BlockID.tardis);
