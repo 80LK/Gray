@@ -2,7 +2,7 @@
 BUILD INFO:
   dir: dev/
   target: mod.js
-  files: 7
+  files: 10
 */
 
 
@@ -72,28 +72,51 @@ IMPORT("SoundAPI");
 IDRegistry.genBlockID("radio");
 Block.createBlockWithRotateAndModel("radio", "Radio", "radio", "radio", { x:.5, z:.5 }, "planks");
 
-TileEntity.registerPrototype(BlockID.cooler, {
+TileEntity.registerPrototype(BlockID.radio, {
     defaultValue:{
         playing:false
     },
     init:function(){
         this.soundPlayer = new Sound();
-        
+        this.soundPlayer.setInBlock(this.x, this.y, this.z, 16);
+        this.soundPlayer.setOnCompletion((function(){
+            if(this.data.playing){
+                this.soundPlayer.setSource(RadioFiles[Utils.random(0, RadioFiles.length)]);
+                this.soundPlayer.play();
+            }
+        }).bind(this))
     },
     click:function(){
+        if(this.data.playing){
+            this.soundPlayer.stop();
+            this.data.playing = false;
+        }else{
+            this.soundPlayer.setSource(RadioFiles[Utils.random(0, RadioFiles.length)]);
+            this.soundPlayer.play();
 
+            this.data.playing = true;
+        }
     }
 });
 
 var RadioFiles = (function(){
     let ret = [];
-    let files = FileTools.GetListOfFiles(__dir__ + "sounds/");
+    let files = FileTools.GetListOfFiles(__dir__ + "sounds/radio/");
 
-    for(let i in files)
-        ret.push(new String(files[i].getName()));
+    for(let i = files.length - 1; i <= 0; i-- )
+        ret.push(new String(__dir__+"sounds/radio/" + files[i].getName()));
 
     return ret;
-})()
+})();
+
+ModAPI.registerAPI("RetroWaveRadio", {
+    addFile:function(path){
+        RadioFiles.push(path);
+    },
+    addFiles:function(paths){
+        RadioFiles = RadioFiles.concat(paths);
+    }
+})
 
 
 
@@ -110,6 +133,50 @@ Block.createBlockWithRotateAndModel("arcade", "Arcade", "arcade", "arcade", { x:
     
     BlockRenderer.setCustomCollisionShape(BlockID.arcade, -1, CollisionShape);
 })()
+
+
+
+
+// dendy/dendy.js
+
+IDRegistry.genBlockID("dendy");
+Block.createBlockWithRotateAndModel("dendy", "Dendy", "dendy", "dendy", { x:0, z:0 });
+
+IDRegistry.genBlockID("dendy_green");
+Block.createBlockWithRotateAndModel("dendy_green", "Dendy", "dendy_0", "dendy", { x:0, z:0 });
+
+IDRegistry.genBlockID("dendy_yellow");
+Block.createBlockWithRotateAndModel("dendy_yellow", "Dendy", "dendy_1", "dendy", { x:0, z:0 });
+Callback.addCallback("ItemUse", function(coords, item, block){
+    switch(block.id){
+        case BlockID.dendy_green:
+            World.drop(coords.x, coords.y+1, coords.z, ItemID.cartridge_green, 1);
+            World.setBlock(coords.x, coords.y, coords.z, BlockID.dendy, block.data);
+        break;
+        case BlockID.dendy_yellow:
+            World.drop(coords.x, coords.y+1, coords.z, ItemID.cartridge_yellow, 1);
+            World.setBlock(coords.x, coords.y, coords.z, BlockID.dendy, block.data);
+        break;
+    }
+});
+
+IDRegistry.genItemID("cartridge_green");
+Item.createItem("cartridge_green", "Cartridge", {name:"cartridge", data:0}, {stack: 1 });
+Item.registerUseFunction("cartridge_green", function(coords, item, block){
+    if(block.id == BlockID.dendy){
+        Player.setCarriedItem(0,0,0);
+        World.setBlock(coords.x, coords.y, coords.z, BlockID.dendy_green, block.data);
+    }
+});
+
+IDRegistry.genItemID("cartridge_yellow");
+Item.createItem("cartridge_yellow", "Cartridge", {name:"cartridge", data:1}, {stack: 1 });
+Item.registerUseFunction("cartridge_yellow", function(coords, item, block){
+    if(block.id == BlockID.dendy){
+        Player.setCarriedItem(0,0,0);
+        World.setBlock(coords.x, coords.y, coords.z, BlockID.dendy_yellow, block.data);
+    }
+});
 
 
 
@@ -151,14 +218,21 @@ var CoolerInterface = (function(){
             }
         }   
     }
-
-    elements["image"] = {
+    
+    elements["image_1"] = {
         type:"image",
-        bitmap:"ice",
+        bitmap:"ice_2",
         x:400,
         y:220,
         scale:7
-        
+    }
+
+    elements["image_2"] = {
+        type:"image",
+        bitmap:"ice",
+        x:400,
+        y:295,
+        scale:7
     }
     return new UI.StandartWindow({
         standart:{
@@ -168,7 +242,7 @@ var CoolerInterface = (function(){
                 },
                 height: 80,
             },
-            background: { color: android.graphics.Color.rgb(134, 217,220) },
+            background: { color:android.graphics.Color.rgb(134, 217,220) },
             inventory: {
                 width: 300,
                 padding: 20
@@ -177,8 +251,6 @@ var CoolerInterface = (function(){
         elements:elements
     });
 })()
-
-const RadioPlayer = new Sound();
 
 
 
@@ -203,6 +275,61 @@ Block.createBlockWithRotateAndModel("tardis", "Tardis", "tardis", "tardis", { x:
 
     BlockRenderer.setCustomCollisionShape(BlockID.cooler, -1, CollisionShape);
 })()
+
+var Tardis = {
+    spawned: false,
+    player:new Sound("tardis.wav"),
+    __pos:{},
+    spawn:function(){
+        Tardis.__pos = Player.getPosition();
+        Tardis.__pos.x += Util.random(-16, 17);
+        Tardis.__pos.z += Util.random(-16, 17);
+        Tardis.__pos.y = GenerationUtils.findHighSurface(Tardis.__pos.x, Tardis.__pos.z);
+        
+        World.setBlock(Tardis.__pos.x, Tardis.__pos.y, Tardis.__pos.z, BlockID.tardis);
+        player.setInBlock(Tardis.__pos.x, Tardis.__pos.y, Tardis.__pos.z, 16);
+        player.play();
+
+        Tardis.spawned = true;
+    },
+    despawn:function(){
+        World.setBlock(Tardis.__pos.x, Tardis.__pos.y, Tardis.__pos.z, 0);
+        Tardis.spawned = false;
+    }
+};
+Callback.addCallback("tick", function(){
+    if(Tardis.spawned){
+        if(World.getWorldTime() % 24000 >= 23000){
+            Tardis.despawn();
+        }
+    }else if(World.getWorldTime() % 24000 >= 17000 && World.getWorldTime() % 24000 < 20000){
+        if(Utility.random(0, 1000) <= 1){
+            Tardis.spawn();
+        }
+    }
+})
+
+
+
+
+// decor.js
+
+IDRegistry.genBlockID("lenin");
+Block.createBlockWithRotateAndModel("lenin", "Lenin's bust", "lena bl", "lena_bl", { x:.5, z:.5 });
+
+
+
+
+// utils.js
+
+const Utils = {
+    random:function(min, max){
+        if(min === undefined) min=0;
+        if(max === undefined) max=min+10;
+
+        return Math.floor((max-min) * Math.random() + min);
+    }
+}
 
 
 
