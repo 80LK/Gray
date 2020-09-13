@@ -7,7 +7,7 @@ TileEntity.registerPrototype(BlockID.radio, {
     },
     init:function(){
         this.soundPlayer = new Sound();
-        this.soundPlayer.setInBlock(this.x, this.y, this.z, 16);
+        this.soundPlayer.setInBlock(this.x, this.y, this.z, 5);
         this.soundPlayer.setOnCompletion((function(){
             if(this.data.playing){
                 this.soundPlayer.setSource(RadioFiles[Utils.random(0, RadioFiles.length)]);
@@ -32,11 +32,13 @@ var RadioFiles = (function(){
     let ret = [];
     let files = FileTools.GetListOfFiles(__dir__ + "sounds/radio/");
 
-    for(let i = files.length - 1; i <= 0; i-- )
-        ret.push(new String(__dir__+"sounds/radio/" + files[i].getName()));
+    //for(let i = files.length - 1; i <= 0; i-- )
+    for(let i in files)
+        ret.push(__dir__+"sounds/radio/" + files[i].getName());
 
     return ret;
 })();
+alert(RadioFiles.length);
 
 ModAPI.registerAPI("RetroWaveRadio", {
     addFile:function(path){
