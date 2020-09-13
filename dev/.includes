@@ -3,3 +3,8 @@ header.js
 radio/radio.js
 
 arcade/arcade.js
+
+cooler/cooler.js
+cooler/interface.js
+
+tv/tv.js

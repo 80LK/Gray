@@ -46,3 +46,7 @@ Block.createBlockWithRotateAndModel = function(sid, name, model, texture, offset
       BlockRenderer.setStaticICRender(BlockID[sid], i, icrender);
   }
 }
+
+var View = android.view.View;
+var Popup = android.widget.PopupWindow;
+var ctx = UI.getContext();

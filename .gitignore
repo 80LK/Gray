@@ -3,3 +3,5 @@ icc.exe
 *.docx
 *.code-workspace
 *.mtl
+*.bcak.js
+*.bbmodel
