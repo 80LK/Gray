@@ -36,7 +36,7 @@ Callback.addCallback("tick", function(){
             Tardis.despawn();
         }
     }else if(World.getWorldTime() % 24000 >= 17000 && World.getWorldTime() % 24000 < 20000){
-        if(Utility.random(0, 1000) <= 1){
+        if(Utils.random(0, 1000) <= 1){
             Tardis.spawn();
         }
     }

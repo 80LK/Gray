@@ -12,5 +12,13 @@ Game.prototype.AddHandlerControl = function(controls, event){
     
     this._controls[controls].push(event);
 }
-
-Game.prototype.output = null;
+Game.prototype.__invoke = function(control){
+    let events = this._controls[control];
+    for(let i in events){
+        events[i]();
+    }
+}
+Game.prototype.canvas = null;
+Game.registerGame = function(obj){
+    
+}
