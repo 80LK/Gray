@@ -8,3 +8,36 @@ Block.createBlockWithRotateAndModel("tardis", "Tardis", "tardis", "tardis", { x:
 
     BlockRenderer.setCustomCollisionShape(BlockID.cooler, -1, CollisionShape);
 })()
+
+var Tardis = {
+    spawned: false,
+    player:new Sound("tardis.wav"),
+    __pos:{},
+    spawn:function(){
+        Tardis.__pos = Player.getPosition();
+        Tardis.__pos.x += Util.random(-16, 17);
+        Tardis.__pos.z += Util.random(-16, 17);
+        Tardis.__pos.y = GenerationUtils.findHighSurface(Tardis.__pos.x, Tardis.__pos.z);
+        
+        World.setBlock(Tardis.__pos.x, Tardis.__pos.y, Tardis.__pos.z, BlockID.tardis);
+        player.setInBlock(Tardis.__pos.x, Tardis.__pos.y, Tardis.__pos.z, 16);
+        player.play();
+
+        Tardis.spawned = true;
+    },
+    despawn:function(){
+        World.setBlock(Tardis.__pos.x, Tardis.__pos.y, Tardis.__pos.z, 0);
+        Tardis.spawned = false;
+    }
+};
+Callback.addCallback("tick", function(){
+    if(Tardis.spawned){
+        if(World.getWorldTime() % 24000 >= 23000){
+            Tardis.despawn();
+        }
+    }else if(World.getWorldTime() % 24000 >= 17000 && World.getWorldTime() % 24000 < 20000){
+        if(Utility.random(0, 1000) <= 1){
+            Tardis.spawn();
+        }
+    }
+})
