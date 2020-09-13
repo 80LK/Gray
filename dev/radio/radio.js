@@ -31,7 +31,7 @@ var RadioFiles = (function(){
     let ret = [];
     let files = FileTools.GetListOfFiles(__dir__ + "sounds/");
 
-    for(let i in files)
+    for(let i = files.length - 1; i <= 0; i-- )
         ret.push(new String(__dir__+"sounds/" + files[i].getName()));
 
     return ret;
