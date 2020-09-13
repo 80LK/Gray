@@ -10,3 +10,7 @@ cooler/interface.js
 tv/tv.js
 
 tardis/tardis.js
+
+decor.js
+
+utils.js

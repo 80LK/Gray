@@ -6,9 +6,26 @@ var CoolerInterface = (function(){
                 type:"slot",
                 x:400 + ( 75 * x),
                 y:40 + ( 75 * y) + (y == 2 ? 30 : 0),
-                size:75
+                size:75,
+                bitmap:"cooler_slot"
             }
         }   
+    }
+    
+    elements["image_1"] = {
+        type:"image",
+        bitmap:"ice_2",
+        x:400,
+        y:220,
+        scale:7
+    }
+
+    elements["image_2"] = {
+        type:"image",
+        bitmap:"ice",
+        x:400,
+        y:295,
+        scale:7
     }
     return new UI.StandartWindow({
         standart:{
@@ -18,7 +35,7 @@ var CoolerInterface = (function(){
                 },
                 height: 80,
             },
-            background: { standart:true },
+            background: { color:android.graphics.Color.rgb(134, 217,220) },
             inventory: {
                 width: 300,
                 padding: 20

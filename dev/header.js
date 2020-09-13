@@ -50,3 +50,5 @@ Block.createBlockWithRotateAndModel = function(sid, name, model, texture, offset
 var View = android.view.View;
 var Popup = android.widget.PopupWindow;
 var ctx = UI.getContext();
+
+IMPORT("SoundAPI");

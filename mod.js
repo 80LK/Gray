@@ -2,7 +2,7 @@
 BUILD INFO:
   dir: dev/
   target: mod.js
-  files: 6
+  files: 7
 */
 
 
@@ -62,6 +62,8 @@ var View = android.view.View;
 var Popup = android.widget.PopupWindow;
 var ctx = UI.getContext();
 
+IMPORT("SoundAPI");
+
 
 
 
@@ -69,6 +71,29 @@ var ctx = UI.getContext();
 
 IDRegistry.genBlockID("radio");
 Block.createBlockWithRotateAndModel("radio", "Radio", "radio", "radio", { x:.5, z:.5 }, "planks");
+
+TileEntity.registerPrototype(BlockID.cooler, {
+    defaultValue:{
+        playing:false
+    },
+    init:function(){
+        this.soundPlayer = new Sound();
+        
+    },
+    click:function(){
+
+    }
+});
+
+var RadioFiles = (function(){
+    let ret = [];
+    let files = FileTools.GetListOfFiles(__dir__ + "sounds/");
+
+    for(let i in files)
+        ret.push(new String(files[i].getName()));
+
+    return ret;
+})()
 
 
 
@@ -121,9 +146,19 @@ var CoolerInterface = (function(){
                 type:"slot",
                 x:400 + ( 75 * x),
                 y:40 + ( 75 * y) + (y == 2 ? 30 : 0),
-                size:75
+                size:75,
+                bitmap:"cooler_slot"
             }
         }   
+    }
+
+    elements["image"] = {
+        type:"image",
+        bitmap:"ice",
+        x:400,
+        y:220,
+        scale:7
+        
     }
     return new UI.StandartWindow({
         standart:{
@@ -133,7 +168,7 @@ var CoolerInterface = (function(){
                 },
                 height: 80,
             },
-            background: { standart:true },
+            background: { color: android.graphics.Color.rgb(134, 217,220) },
             inventory: {
                 width: 300,
                 padding: 20
@@ -143,6 +178,8 @@ var CoolerInterface = (function(){
     });
 })()
 
+const RadioPlayer = new Sound();
+
 
 
 
@@ -150,6 +187,22 @@ var CoolerInterface = (function(){
 
 IDRegistry.genBlockID("tvbox");
 Block.createBlockWithRotateAndModel("tvbox", "TV", "tv", "tv", { x:0, z:0 }, "iron_block");
+
+
+
+
+// tardis/tardis.js
+
+IDRegistry.genBlockID("tardis");
+Block.createBlockWithRotateAndModel("tardis", "Tardis", "tardis", "tardis", { x:0, z:0 });
+
+(function(){
+    let CollisionShape = new ICRender.CollisionShape();
+    let Entry = CollisionShape.addEntry();
+    Entry.addBox(0,0,0,1,2,1);
+
+    BlockRenderer.setCustomCollisionShape(BlockID.cooler, -1, CollisionShape);
+})()
 
 
 
