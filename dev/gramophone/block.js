@@ -12,32 +12,43 @@ TileEntity.registerPrototype(BlockID.gramophone, {
             this.player.setSource(GramophoneDisks.getSource(this.data.disk));
 
         this.player.setInBlock(this.x, this.y, this.z, 5);
+
+        this.__extraxtDisk = this.__extraxtDisk.bind(this);
     },
     click:function(id, count, data){
-        Debug.message(id);
-
+        if(Entity.getSneaking(Player.get())){
+            this.__extraxtDisk();
+            return;
+        }
         if(GramophoneDisks.isDisk(id)){
-            if(this.data.disk)
+            if(this.data.disk){
+                this.player.stop();
+                this.data.playing = false;
                 World.drop(this.x, this.y+1, this.z, this.data.disk, 1);
+            }
 
             this.data.disk = id;
             this.player.setSource(GramophoneDisks.getSource(id));
             return;
         }
+        Debug.message(this.data.disk);
+        
         if(this.data.playing){
             this.player.pause();
+            this.data.playing = false;
         }else{
             this.player.play();
+            this.data.playing = true;
         }
     },
-    destroy:function(){
+    __extraxtDisk:function(){
         if(this.data.disk != null){
-            World.drop(this.x, this.y+1, this.z, this.data.disk, 1);
+            World.drop(this.x, this.y+1, this.z, this.data.disk, 1);            
+            this.player.stop();
             this.data.disk = null;
-            return false;
+            this.data.playing = false;
+            Game.prevent();
         }
-
-        return true;
     }
 });
 
