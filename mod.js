@@ -126,10 +126,10 @@ ModAPI.registerAPI("RetroWaveRadio", {
 IDRegistry.genBlockID("gramophone");
 Block.createBlockWithRotateAndModel("gramophone", "Gramophone", "gramophone", "gramophone", { x:0, z:0 }, "iron_block");
 var gramophoneOffset = [
-    [],
-    [],
-    [-1, 0],
-    []
+    [0, 0],
+    [0, 0],
+    [1/**(10/16) */, 0],
+    [0, 0]
 ];
 TileEntity.registerPrototype(BlockID.gramophone, {
     defaultData:{
@@ -147,10 +147,11 @@ TileEntity.registerPrototype(BlockID.gramophone, {
         this.__extraxtDisk = this.__extraxtDisk.bind(this);
         this.__insertDisk = this.__insertDisk.bind(this);
 
+        
+        //this.animate = new Animation.Item(this.x + this.offsetDisk[0], this.y + (3.5 / 16), this.z + this.offsetDisk[1]);
+        this.animate = new Animation.Item(this.x + .5, this.y + (3.5 / 16), this.z + .5);
         if(this.data.disk)
             this.__insertDisk(this.data.disk);
-
-        this.animate = new Animation.Item(this.x + this.offsetDisk[0], this.y + (3 / 16), this.z + this.offsetDisk[2]);
     },
     __insertDisk:function(id){
         this.data.disk = id;
@@ -167,15 +168,7 @@ TileEntity.registerPrototype(BlockID.gramophone, {
         });
         this.animate.loadCustom((function(){
                 if(this.data.playing){
-                    this.animate.describeItem({
-                        id: this.data.disk,
-                        count: 1,
-                        data: 0,
-                        size: 1,
-                        rotation: [Math.PI/2, (this.data.rotate += Math.PI/40), 0],
-                        notRandomize: true
-                    });
-                    this.animate.refresh();
+                    this.animate.transform().rotate(0, 0, Math.PI/40);
                 }
             }).bind(this));
     },
@@ -203,7 +196,6 @@ TileEntity.registerPrototype(BlockID.gramophone, {
             Player.setCarriedItem(0,0,0);
             return;
         }
-        Debug.message(World.getBlock(this.x, this.y, this.z).data);
         
         if(this.data.playing){
             this.player.pause();
@@ -212,6 +204,9 @@ TileEntity.registerPrototype(BlockID.gramophone, {
             this.player.play();
             this.data.playing = true;
         }
+    },
+    destroyBlock:function(){
+        this.__extraxtDisk();
     }
 });
 
@@ -450,7 +445,7 @@ IDRegistry.genBlockID("lenin");
 Block.createBlockWithRotateAndModel("lenin", "Lenin's bust", "lena bl", "lena_bl", { x:.5, z:.5 });
 
 IDRegistry.genBlockID("old_phone");
-Block.createBlockWithRotateAndModel("old_phone", "Old Phone", "lena bl", "lena_bl", { x:.5, z:.5 });
+Block.createBlockWithRotateAndModel("old_phone", "Old Phone", "telePHon", "telePHon", { x:.5, z:.5 });
 
 
 

@@ -23,8 +23,8 @@ TileEntity.registerPrototype(BlockID.gramophone, {
         this.__insertDisk = this.__insertDisk.bind(this);
 
         
-        this.animate = new Animation.Item(this.x + this.offsetDisk[0], this.y + (3 / 16), this.z + this.offsetDisk[1]);
-        this.animate.transform().translate(-1, 0, 0);
+        //this.animate = new Animation.Item(this.x + this.offsetDisk[0], this.y + (3.5 / 16), this.z + this.offsetDisk[1]);
+        this.animate = new Animation.Item(this.x + .5, this.y + (3.5 / 16), this.z + .5);
         if(this.data.disk)
             this.__insertDisk(this.data.disk);
     },
@@ -43,15 +43,7 @@ TileEntity.registerPrototype(BlockID.gramophone, {
         });
         this.animate.loadCustom((function(){
                 if(this.data.playing){
-                    this.animate.describeItem({
-                        id: this.data.disk,
-                        count: 1,
-                        data: 0,
-                        size: 1,
-                        rotation: [Math.PI/2, (this.data.rotate += Math.PI/40), 0],
-                        notRandomize: true
-                    });
-                    this.animate.refresh();
+                    this.animate.transform().rotate(0, 0, Math.PI/40);
                 }
             }).bind(this));
     },
@@ -79,7 +71,6 @@ TileEntity.registerPrototype(BlockID.gramophone, {
             Player.setCarriedItem(0,0,0);
             return;
         }
-        Debug.message(World.getBlock(this.x, this.y, this.z).data);
         
         if(this.data.playing){
             this.player.pause();
@@ -88,6 +79,9 @@ TileEntity.registerPrototype(BlockID.gramophone, {
             this.player.play();
             this.data.playing = true;
         }
+    },
+    destroyBlock:function(){
+        this.__extraxtDisk();
     }
 });
 
