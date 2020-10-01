@@ -126,10 +126,10 @@ ModAPI.registerAPI("RetroWaveRadio", {
 IDRegistry.genBlockID("gramophone");
 Block.createBlockWithRotateAndModel("gramophone", "Gramophone", "gramophone", "gramophone", { x:0, z:0 }, "iron_block");
 var gramophoneOffset = [
-    [0, 0],
-    [0, 0],
-    [1/**(10/16) */, 0],
-    [0, 0]
+    [19/32, 19/32],
+    [13/32, 13/32],
+    [19/32, 13/32],
+    [13/32, 19/32]
 ];
 TileEntity.registerPrototype(BlockID.gramophone, {
     defaultData:{
@@ -138,7 +138,11 @@ TileEntity.registerPrototype(BlockID.gramophone, {
     },
     init:function(){
         this.player = new Sound();
-        this.offsetDisk = gramophoneOffset[World.getBlock(this.x, this.y, this.z).data];
+        this.tile = World.getBlock(this.x, this.y, this.z);
+        
+        alert(this.tile.data);
+
+        this.offsetDisk = gramophoneOffset[this.tile.data];
         
 
         this.player.setInBlock(this.x, this.y, this.z, 5);
@@ -148,8 +152,8 @@ TileEntity.registerPrototype(BlockID.gramophone, {
         this.__insertDisk = this.__insertDisk.bind(this);
 
         
-        //this.animate = new Animation.Item(this.x + this.offsetDisk[0], this.y + (3.5 / 16), this.z + this.offsetDisk[1]);
-        this.animate = new Animation.Item(this.x + .5, this.y + (3.5 / 16), this.z + .5);
+        this.animate = new Animation.Item(this.x + this.offsetDisk[0], this.y + (3.5 / 16), this.z + this.offsetDisk[1]);
+        //this.animate = new Animation.Item(this.x + .5, this.y + (3.5 / 16), this.z + .5);
         if(this.data.disk)
             this.__insertDisk(this.data.disk);
     },
@@ -167,6 +171,10 @@ TileEntity.registerPrototype(BlockID.gramophone, {
             notRandomize: true
         });
         this.animate.loadCustom((function(){
+                if(!this.animate.translated && this.animate.transform()){
+                    this.animate.translated = true;
+                }
+
                 if(this.data.playing){
                     this.animate.transform().rotate(0, 0, Math.PI/40);
                 }
@@ -411,30 +419,48 @@ var Tardis = {
         Tardis.__pos = Player.getPosition();
         Tardis.__pos.x += Utils.random(-16, 17);
         Tardis.__pos.z += Utils.random(-16, 17);
-        Tardis.__pos.y = GenerationUtils.findHighSurface(Tardis.__pos.x, Tardis.__pos.z);
+        Tardis.__pos = GenerationUtils.findHighSurface(Tardis.__pos.x, Tardis.__pos.z);
         
         World.setBlock(Tardis.__pos.x, Tardis.__pos.y, Tardis.__pos.z, BlockID.tardis);
-        player.setInBlock(Tardis.__pos.x, Tardis.__pos.y, Tardis.__pos.z, 16);
-        player.play();
+        Tardis.player.setInBlock(Tardis.__pos.x, Tardis.__pos.y, Tardis.__pos.z, 16);
+        Tardis.player.play();
+
+        Debug.message([Tardis.__pos.x, Tardis.__pos.y, Tardis.__pos.z]);
 
         Tardis.spawned = true;
     },
     despawn:function(){
         World.setBlock(Tardis.__pos.x, Tardis.__pos.y, Tardis.__pos.z, 0);
         Tardis.spawned = false;
+    },
+    tick:function(){
+        if(Tardis.spawned){
+            if(World.getWorldTime() % 24000 >= 23000){
+                Tardis.despawn();
+            }
+        }else if(World.getWorldTime() % 24000 >= 17000 && World.getWorldTime() % 24000 < 20000){
+            if(Utils.random(0, 1000) <= 1 || true){
+                Tardis.spawn();
+            }
+        }
     }
 };
-Callback.addCallback("tick", function(){
-    if(Tardis.spawned){
-        if(World.getWorldTime() % 24000 >= 23000){
-            Tardis.despawn();
-        }
-    }else if(World.getWorldTime() % 24000 >= 17000 && World.getWorldTime() % 24000 < 20000){
-        if(Utils.random(0, 1000) <= 1){
-            Tardis.spawn();
-        }
+
+Saver.addSavesScope("RW_Tardis",
+    function read(scope){
+        Tardis.spawned = scope.spawned;
+        Tardis.__pos = scope.posistion;
+
+        Tardis.player.setInBlock(Tardis.__pos.x, Tardis.__pos.y, Tardis.__pos.z, 16);
+    },
+
+    function save(){
+        return {
+            spawned:Tardis.spawned,
+            position:Tardis.__pos
+        };
     }
-})
+);
 
 
 
