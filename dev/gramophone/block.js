@@ -1,10 +1,10 @@
 IDRegistry.genBlockID("gramophone");
 Block.createBlockWithRotateAndModel("gramophone", "Gramophone", "gramophone", "gramophone", { x:0, z:0 }, "iron_block");
 var gramophoneOffset = [
-    [0, 0],
-    [0, 0],
-    [1/**(10/16) */, 0],
-    [0, 0]
+    [19/32, 19/32],
+    [13/32, 13/32],
+    [19/32, 13/32],
+    [13/32, 19/32]
 ];
 TileEntity.registerPrototype(BlockID.gramophone, {
     defaultData:{
@@ -13,7 +13,11 @@ TileEntity.registerPrototype(BlockID.gramophone, {
     },
     init:function(){
         this.player = new Sound();
-        this.offsetDisk = gramophoneOffset[World.getBlock(this.x, this.y, this.z).data];
+        this.tile = World.getBlock(this.x, this.y, this.z);
+        
+        alert(this.tile.data);
+
+        this.offsetDisk = gramophoneOffset[this.tile.data];
         
 
         this.player.setInBlock(this.x, this.y, this.z, 5);
@@ -23,8 +27,8 @@ TileEntity.registerPrototype(BlockID.gramophone, {
         this.__insertDisk = this.__insertDisk.bind(this);
 
         
-        //this.animate = new Animation.Item(this.x + this.offsetDisk[0], this.y + (3.5 / 16), this.z + this.offsetDisk[1]);
-        this.animate = new Animation.Item(this.x + .5, this.y + (3.5 / 16), this.z + .5);
+        this.animate = new Animation.Item(this.x + this.offsetDisk[0], this.y + (3.5 / 16), this.z + this.offsetDisk[1]);
+        //this.animate = new Animation.Item(this.x + .5, this.y + (3.5 / 16), this.z + .5);
         if(this.data.disk)
             this.__insertDisk(this.data.disk);
     },
@@ -42,6 +46,10 @@ TileEntity.registerPrototype(BlockID.gramophone, {
             notRandomize: true
         });
         this.animate.loadCustom((function(){
+                if(!this.animate.translated && this.animate.transform()){
+                    this.animate.translated = true;
+                }
+
                 if(this.data.playing){
                     this.animate.transform().rotate(0, 0, Math.PI/40);
                 }
