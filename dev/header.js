@@ -47,8 +47,60 @@ Block.createBlockWithRotateAndModel = function(sid, name, model, texture, offset
   }
 }
 
-var View = android.view.View;
-var Popup = android.widget.PopupWindow;
+var View = android.view.View,
+   Popup = android.widget.PopupWindow,
+   NinePatchDrawable = android.graphics.drawable.NinePatchDrawable,
+   RelativeLayout = android.widget.RelativeLayout,
+   Button = android.widget.Button,
+   ImageView = android.widget.ImageView,
+   Thread = java.lang.Thread,
+   Bitmap = android.graphics.Bitmap,
+   Rect = android.graphics.Rect,
+   Paint = android.graphics.Paint,
+   BitmapFactory = android.graphics.BitmapFactory;
+   
 var ctx = UI.getContext();
+var ICGame = Game;
+
+function runUI(f){
+   if(f)
+      ctx.runOnUiThread(new java.lang.Runnable({
+         run: function() {
+            f();
+         }
+      }))
+}
+
+function createNinePatch(bitmap, x, y, c){
+   let xL = x.length, yL = y.length, cL = (xL+1) * (yL+1);
+   var a = java.nio.ByteBuffer.allocate(32 + (xL+yL+cL) * 4).order(java.nio.ByteOrder.nativeOrder());
+   a.put(1);
+   a.put(xL);
+   a.put(yL);
+   a.put(cL);
+   a.putInt(0);
+   a.putInt(0);
+   a.putInt(0);
+   a.putInt(0);
+   a.putInt(0);
+   a.putInt(0);
+   a.putInt(0);
+
+   for(let i = 0; i < xL; i++)
+      a.putInt(x[i]);
+   for(let i = 0; i < yL; i++)
+      a.putInt(y[i]);
+   for(let i = 0; i < cL; i++)
+      a.putInt(1);
+   
+   return new NinePatchDrawable(ctx.getResources(), bitmap, a.array(), new Rect(), "")
+}
+
+runUI(function(){
+   ctx.getWindow().setFlags(
+      android.view.WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+      android.view.WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+  );
+});
 
 IMPORT("SoundAPI");

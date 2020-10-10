@@ -62,7 +62,7 @@ TileEntity.registerPrototype(BlockID.gramophone, {
             this.data.disk = null;
             this.data.playing = false;
             this.animate.destroy();
-            Game.prevent();
+            ICGame.prevent();
         }
     },
     click:function(id, count, data){

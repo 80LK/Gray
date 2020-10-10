@@ -46,8 +46,8 @@ var Tardis = {
 
 Saver.addSavesScope("RW_Tardis",
     function read(scope){
-        Tardis.spawned = scope.spawned;
-        Tardis.__pos = scope.posistion;
+        Tardis.spawned = scope.spawned || false;
+        Tardis.__pos = scope.posistion || {x:0, y:0, z:0} ;
 
         Tardis.player.setInBlock(Tardis.__pos.x, Tardis.__pos.y, Tardis.__pos.z, 16);
     },

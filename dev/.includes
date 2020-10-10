@@ -5,6 +5,8 @@ radio/radio.js
 gramophone/block.js
 
 arcade/arcade.js
+arcade/window.js
+arcade/game.js
 
 dendy/dendy.js
 
