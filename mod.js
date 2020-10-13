@@ -2,7 +2,7 @@
 BUILD INFO:
   dir: dev
   target: mod.js
-  files: 13
+  files: 14
 */
 
 
@@ -68,6 +68,9 @@ var View = android.view.View,
    Bitmap = android.graphics.Bitmap,
    Rect = android.graphics.Rect,
    Paint = android.graphics.Paint,
+   Color = android.graphics.Color,
+   System = java.lang.System,
+   MotionEvent = android.view.MotionEvent,
    BitmapFactory = android.graphics.BitmapFactory;
    
 var ctx = UI.getContext();
@@ -115,6 +118,20 @@ runUI(function(){
 });
 
 IMPORT("SoundAPI");
+
+
+
+
+// file: utils.js
+
+const Utils = {
+    random:function(min, max){
+        if(min === undefined) min=0;
+        if(max === undefined) max=min+10;
+
+        return Math.floor((max-min) * Math.random() + min);
+    }
+}
 
 
 
@@ -326,6 +343,7 @@ Block.createBlockWithRotateAndModel("arcade", "Arcade", "arcade", "arcade", { x:
 
 // file: arcade/window.js
 
+//MotionEvent
 var Arcade = {
     game:null,
     window:null
@@ -336,7 +354,13 @@ Arcade.window = (function(){
     popup.setWidth(-1);
     popup.setHeight(-1);
     let surface, surfaceHolder;
-
+    let errorPaint = (function(){
+        let p = new Paint();
+        p.setColor(Color.WHITE);
+        p.setTypeface(Game.UI.Typeface);
+        p.setTextSize(20);
+        return p;
+    })();
 
     let thisWindow =  {
         open:function(){
@@ -347,8 +371,13 @@ Arcade.window = (function(){
             thisWindow.opened = true;
             new Thread(function(){
                 var canvas = null;
-                alert("Start draw");
+                thisWindow.drawing = true;
+                let lastTime = System.currentTimeMillis();
                 while (thisWindow.opened) {
+                    let currentTime = System.currentTimeMillis();
+                    Arcade.game.tick((currentTime - lastTime)/1000);
+                    lastTime = currentTime;
+
                     canvas = null;
                     try {
                         canvas = surface.lockCanvas();
@@ -356,32 +385,36 @@ Arcade.window = (function(){
 
                         Arcade.game.draw(canvas);
                     } catch(e){
+                        canvas.drawColor(Color.BLUE);
+                        e = e.toString();
+                        canvas.drawText(e, 0, e.length || e.length(), )
                         alert(e);
-                        break;
                     }finally {
                         if (canvas != null)
                             surface.unlockCanvasAndPost(canvas);
                     }
                 }
-                alert("stop draw");
+                thisWindow.drawing = false;
             }).start();
         },
         opened:false,
+        drawing:false,
         close:function(){
             if(!thisWindow.opened) return;
         
             thisWindow.opened = false;
+            while(thisWindow.drawing){}
             runUI(function(){
                 popup.dismiss();
             });
         }
     };
+    let rootBitmap = new BitmapFactory.decodeFile(__dir__ + "gui/arcadeUI.png");
     
 
     let rootLayout = new RelativeLayout(ctx);
     rootLayout.setBackgroundDrawable((function(){
-        let bitmap = new BitmapFactory.decodeFile(__dir__ + "gui/arcadeUI.png");
-        bitmap = new Bitmap.createBitmap(bitmap, 0, 0, 64, 58);
+        let bitmap = new Bitmap.createBitmap(rootBitmap, 0, 0, 64, 58);
         bitmap = Bitmap.createScaledBitmap(bitmap, 64 * 8, 58 * 8, false);
         return createNinePatch(bitmap, [23 * 8, 24 * 8, 40 * 8, 41 * 8], [5 * 8, 37 * 8], [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]);
     })());
@@ -398,26 +431,54 @@ Arcade.window = (function(){
     
 
     let exitButton = new ImageView(ctx);
-    exitButton.setImageBitmap((function(){
-        let bitmap = new BitmapFactory.decodeFile(__dir__ + "gui/arcadeUI.png");
-        bitmap = new Bitmap.createBitmap(bitmap, 28, 63, 3, 3);
-        return Bitmap.createScaledBitmap(bitmap, 3 * 8, 3 * 8, false);;
-    })());
+    let exitButtonDefaultBitmap = (function(){
+            let bitmap = new Bitmap.createBitmap(rootBitmap, 28, 63, 3, 3);
+            return Bitmap.createScaledBitmap(bitmap, 3 * 15, 3 * 15, false);
+        })(),
+        exitButtonPressBitmap = (function(){
+            let bitmap = new Bitmap.createBitmap(rootBitmap, 28, 66, 3, 3);
+            return Bitmap.createScaledBitmap(bitmap, 3 * 10, 3 * 10, false);
+        })();
+    exitButton.setImageBitmap(exitButtonDefaultBitmap);
     exitButton.setOnClickListener(thisWindow.close);
+    exitButton.setOnTouchListener(function(b, c){
+        var f = c.getActionMasked();
+        if (f == MotionEvent.ACTION_DOWN) {
+            b.setImageBitmap(exitButtonPressBitmap);
+        }
+        if (f == MotionEvent.ACTION_CANCEL || f == MotionEvent.ACTION_UP) {
+            b.setImageBitmap(exitButtonDefaultBitmap);
+        }
+        return false;
+    })
     let exitButtonParams  = new RelativeLayout.LayoutParams(-2, -2);
     exitButtonParams.setMargins(0, 8 * 5, 8 * 5, 0);
     exitButtonParams.addRule(RelativeLayout.ALIGN_PARENT_RIGHT);
     rootLayout.addView(exitButton, exitButtonParams);
 
     let buttonControlUp = new ImageView(ctx);
-    buttonControlUp.setImageBitmap((function(){
-        let bitmap = new BitmapFactory.decodeFile(__dir__ + "gui/arcadeUI.png");
-        bitmap = new Bitmap.createBitmap(bitmap, 21, 58, 7, 7);
-        return Bitmap.createScaledBitmap(bitmap, 7 * 8, 7 * 8, false);;
-    })());
+    let buttonControlUpDefaultBitmap = (function(){
+            let bitmap = new Bitmap.createBitmap(rootBitmap, 21, 58, 7, 7);
+            return Bitmap.createScaledBitmap(bitmap, 7 * 8, 7 * 8, false);
+        })(),
+        buttonControlUpPressBitmap = (function(){
+            let bitmap = new Bitmap.createBitmap(rootBitmap, 21, 65, 7, 7);
+            return Bitmap.createScaledBitmap(bitmap, 7 * 8, 7 * 8, false);
+        })();
+    buttonControlUp.setImageBitmap(buttonControlUpDefaultBitmap);
     buttonControlUp.setOnClickListener(function(){
         Arcade.game.invoke(Game.CONTROLS.UP)
     });
+    buttonControlUp.setOnTouchListener(function(b, c){
+        var f = c.getActionMasked();
+        if (f == MotionEvent.ACTION_DOWN) {
+            b.setImageBitmap(buttonControlUpPressBitmap);
+        }
+        if (f == MotionEvent.ACTION_CANCEL || f == MotionEvent.ACTION_UP) {
+            b.setImageBitmap(buttonControlUpDefaultBitmap);
+        }
+        return false;
+    })
     let buttonControlUpParams  = new RelativeLayout.LayoutParams(-2, -2);
     buttonControlUpParams.addRule(RelativeLayout.ALIGN_PARENT_BOTTOM);
     buttonControlUpParams.addRule(RelativeLayout.ALIGN_PARENT_RIGHT);
@@ -425,14 +486,29 @@ Arcade.window = (function(){
     rootLayout.addView(buttonControlUp, buttonControlUpParams);
 
     let buttonControlDown = new ImageView(ctx);
-    buttonControlDown.setImageBitmap((function(){
-        let bitmap = new BitmapFactory.decodeFile(__dir__ + "gui/arcadeUI.png");
-        bitmap = new Bitmap.createBitmap(bitmap, 14, 58, 7, 7);
-        return Bitmap.createScaledBitmap(bitmap, 7 * 8, 7 * 8, false);;
-    })());
+    let buttonControlDownDefaultBitmap = (function(){
+        let bitmap = new Bitmap.createBitmap(rootBitmap, 14, 58, 7, 7);
+        return Bitmap.createScaledBitmap(bitmap, 7 * 8, 7 * 8, false);
+    })(),
+    buttonControlDownPressBitmap = (function(){
+        let bitmap = new Bitmap.createBitmap(rootBitmap, 14, 65, 7, 7);
+        return Bitmap.createScaledBitmap(bitmap, 7 * 8, 7 * 8, false);
+    })();
+
+    buttonControlDown.setImageBitmap(buttonControlDownDefaultBitmap);
     buttonControlDown.setOnClickListener(function(){
         Arcade.game.invoke(Game.CONTROLS.DOWN)
     });
+    buttonControlDown.setOnTouchListener(function(b, c){
+        var f = c.getActionMasked();
+        if (f == MotionEvent.ACTION_DOWN) {
+            b.setImageBitmap(buttonControlDownPressBitmap);
+        }
+        if (f == MotionEvent.ACTION_CANCEL || f == MotionEvent.ACTION_UP) {
+            b.setImageBitmap(buttonControlDownDefaultBitmap);
+        }
+        return false;
+    })
     let buttonControlDownParams  = new RelativeLayout.LayoutParams(-2, -2);
     buttonControlDownParams.addRule(RelativeLayout.ALIGN_PARENT_BOTTOM);
     buttonControlDownParams.addRule(RelativeLayout.ALIGN_PARENT_RIGHT);
@@ -440,28 +516,58 @@ Arcade.window = (function(){
     rootLayout.addView(buttonControlDown, buttonControlDownParams);
 
     let buttonControlLeft = new ImageView(ctx);
-    buttonControlLeft.setImageBitmap((function(){
-        let bitmap = new BitmapFactory.decodeFile(__dir__ + "gui/arcadeUI.png");
-        bitmap = new Bitmap.createBitmap(bitmap, 0, 58, 7, 7);
-        return Bitmap.createScaledBitmap(bitmap, 7 * 8, 7 * 8, false);;
-    })());
+    let buttonControlLeftDefaultBitmap = (function(){
+        let bitmap = new Bitmap.createBitmap(rootBitmap, 0, 58, 7, 7);
+        return Bitmap.createScaledBitmap(bitmap, 7 * 8, 7 * 8, false);
+    })(),
+    buttonControlLeftPressBitmap = (function(){
+        let bitmap = new Bitmap.createBitmap(rootBitmap, 0, 65, 7, 7);
+        return Bitmap.createScaledBitmap(bitmap, 7 * 8, 7 * 8, false);
+    })();
+
+    buttonControlLeft.setImageBitmap(buttonControlLeftDefaultBitmap);
     buttonControlLeft.setOnClickListener(function(){
         Arcade.game.invoke(Game.CONTROLS.LEFT)
     });
+    buttonControlLeft.setOnTouchListener(function(b, c){
+        var f = c.getActionMasked();
+        if (f == MotionEvent.ACTION_DOWN) {
+            b.setImageBitmap(buttonControlLeftPressBitmap);
+        }
+        if (f == MotionEvent.ACTION_CANCEL || f == MotionEvent.ACTION_UP) {
+            b.setImageBitmap(buttonControlLeftDefaultBitmap);
+        }
+        return false;
+    })
     let buttonControlLeftParams  = new RelativeLayout.LayoutParams(-2, -2);
     buttonControlLeftParams.addRule(RelativeLayout.ALIGN_PARENT_BOTTOM);
     buttonControlLeftParams.setMargins(150, 0, 0, 8 * 2);
     rootLayout.addView(buttonControlLeft, buttonControlLeftParams);
 
     let buttonControlRight = new ImageView(ctx);
-    buttonControlRight.setImageBitmap((function(){
-        let bitmap = new BitmapFactory.decodeFile(__dir__ + "gui/arcadeUI.png");
-        bitmap = new Bitmap.createBitmap(bitmap, 7, 58, 7, 7);
-        return Bitmap.createScaledBitmap(bitmap, 7 * 8, 7 * 8, false);;
-    })());
+    let buttonControlRightDefaultBitmap = (function(){
+        let bitmap = new Bitmap.createBitmap(rootBitmap, 7, 58, 7, 7);
+        return Bitmap.createScaledBitmap(bitmap, 7 * 8, 7 * 8, false);
+    })(),
+    buttonControlRightPressBitmap = (function(){
+        let bitmap = new Bitmap.createBitmap(rootBitmap, 7, 65, 7, 7);
+        return Bitmap.createScaledBitmap(bitmap, 7 * 8, 7 * 8, false);
+    })();
+
+    buttonControlRight.setImageBitmap(buttonControlRightDefaultBitmap);
     buttonControlRight.setOnClickListener(function(){
         Arcade.game.invoke(Game.CONTROLS.RIGHT)
     });
+    buttonControlRight.setOnTouchListener(function(b, c){
+        var f = c.getActionMasked();
+        if (f == MotionEvent.ACTION_DOWN) {
+            b.setImageBitmap(buttonControlRightPressBitmap);
+        }
+        if (f == MotionEvent.ACTION_CANCEL || f == MotionEvent.ACTION_UP) {
+            b.setImageBitmap(buttonControlRightDefaultBitmap);
+        }
+        return false;
+    })
     let buttonControlRightParams  = new RelativeLayout.LayoutParams(-2, -2);
     buttonControlRightParams.addRule(RelativeLayout.ALIGN_PARENT_BOTTOM);
     buttonControlRightParams.setMargins(270, 0, 0, 8 * 2);
@@ -473,7 +579,6 @@ Arcade.window = (function(){
 
 Callback.addCallback("ItemUse", function(c, i, b){
     if(b.id == BlockID.arcade){
-        ICGame.message("Open");
         Arcade.window.open();
         ICGame.prevent();
     }
@@ -486,20 +591,60 @@ Callback.addCallback("ItemUse", function(c, i, b){
 
 var Game = function (){
     this.elements = [];
-    
-    this.elements.push(new Game.UI.ItemList());
-    this.elements[0].Select = true;
+    this.gameSID = Object.keys(Game.__list);
+    this.__current = 0;
 
-    this.AddHandlerControl(Game.CONTROLS.UP, function () { alert(Game.CONTROLS.UP) });
-    this.AddHandlerControl(Game.CONTROLS.DOWN, function () { alert(Game.CONTROLS.DOWN) });
-    this.AddHandlerControl(Game.CONTROLS.LEFT, function () { alert(Game.CONTROLS.LEFT) });
-    this.AddHandlerControl(Game.CONTROLS.RIGHT, function () { alert(Game.CONTROLS.RIGHT) });
+    this.Next = function(){
+        if(this.__current == this.elements.length-1)
+            this.Select(0);
+        else
+            this.Select(this.__current+1);
+    }
+    this.Prev = function(){
+        if(this.__current == 0)
+            this.Select(this.elements.length-1);
+        else
+            this.Select(this.__current-1);
+    }
+    this.Select = function(i){
+        this.elements[this.__current].Select = false;
+        this.elements[this.__current = i].Select = true;
+    }
+
+    let size;
+    for(let i = 0, l = this.gameSID.length; i < l; i++){
+        let item = new Game.UI.ItemList();
+        item.Text = Game.__list[this.gameSID[i]].name;
+        if(!size){
+            item.getRect();
+            size = item.__height;
+        }
+        item.X = 10;
+        item.Y = 10 + (size + 10) * i;
+        if(i==0)
+            item.Select = true;
+
+        this.elements.push(item);
+    }
+
+    this.AddHandlerControl(Game.CONTROLS.UP, function () {
+        this.Prev();
+    });
+    this.AddHandlerControl(Game.CONTROLS.DOWN, function () {
+        this.Next();
+    });
+    this.AddHandlerControl(Game.CONTROLS.LEFT, function () {
+        ArcadeMenu.Start(Game.__list[this.gameSID[this.__current]]);
+    });
+    this.AddHandlerControl(Game.CONTROLS.RIGHT, function () {
+        ArcadeMenu.Start(Game.__list[this.gameSID[this.__current]]);
+    });
 };
 Game.prototype.AddHandlerControl = function (controls, event) {
     if (!this.__controls)
         this.__controls = [[], [], [], []];
 
-    this.__controls[controls].push(event);
+    this.__controls[controls].push(event.bind(this));
 }
 Game.prototype.invoke = function (control) {
     if (this.__controls === null) return;
@@ -509,12 +654,15 @@ Game.prototype.invoke = function (control) {
         events[i]();
     }
 }
-Game.prototype.name = "arcade_menu";
+Game.prototype.sid = "arcade_menu";
 Game.prototype.toString = function(){
     return "Game[" + this.name + "]";
 }
 Game.prototype.__controls = null;
-Game.prototype.draw = function (canvas) { 
+Game.prototype.tick = function(){};
+Game.prototype.draw = function (canvas) {
+    throw new Error("Hello bitch!");
+    
     //Draw background
     canvas.drawColor(android.graphics.Color.BLACK);
 
@@ -522,12 +670,13 @@ Game.prototype.draw = function (canvas) {
     if(this.elements.length == 0){
         let bounds = new Rect();
         let textToDraw = "Игр не найдено"
-        ArcadeMemu.MenuTextEmpty.getTextBounds(textToDraw, 0, textToDraw.length, bounds);
-        return canvas.drawText(textToDraw, canvas.getWidth()/2, (canvas.getHeight()+(bounds.bottom-bounds.top))/2, ArcadeMemu.MenuTextEmpty); 
+        ArcadeMenu.MenuTextEmpty.getTextBounds(textToDraw, 0, textToDraw.length, bounds);
+        return canvas.drawText(textToDraw, canvas.getWidth()/2, (canvas.getHeight()+(bounds.bottom-bounds.top))/2, ArcadeMenu.MenuTextEmpty); 
     }
 
-    for(let i in this.elements)
-        this.elements.draw(canvas);
+    for(let i in this.elements){
+        this.elements[i].draw(canvas);
+    }
 }
 Game.prototype.close = function(){
     Arcade.game = Game.MenuGame;
@@ -539,21 +688,23 @@ Game.CONTROLS = {
     RIGHT: 3
 };
 Game.__list = {};
+Game.extends = function(_game){
+    var F = function(){};
+    F.prototype = Game.prototype;
+    _game.prototype = new F();
+    _game.prototype.constructor = _game;
+    _game.superclass = Game.prototype;
+}
 Game.registerGame = function (name, _game) {
     if(Game.__list.hasOwnProperty(name))
         throw new Error("Game \""+name+"\" was been register.");
 
-    var F = function(){};
-    F.prototype = Game.prototype;
-    _game.prototype = new F();
-    _game.prototype.name = name;
-    _game.prototype.constructor = _game;
-    _game.superclass = Game.prototype;
-
+    _game.prototype.sid = name;
     Game.__list[name] = new _game();
 }
 
 Game.UI = {};
+Game.UI.Typeface = android.graphics.Typeface.createFromFile(__dir__ + "gui/mc-typeface.ttf");
 Game.UI.extends = function (Child, Parent) {
     if(Parent === undefined)
         Parent = Game.UI.IVeiw;
@@ -561,7 +712,6 @@ Game.UI.extends = function (Child, Parent) {
     var F = function(){};
     F.prototype = Parent.prototype;
     Child.prototype = new F();
-    Child.prototype.name = name;
     Child.prototype.constructor = Child;
 
     Child.superclass = Parent.prototype;
@@ -572,7 +722,11 @@ Game.UI.IVeiw.prototype.draw = function(){};
 Game.UI.ItemList = function(){
     this.Font = new Paint();
     this.Font.setARGB(255, 255, 255, 255);
-    this.Font.setTypeface(Game.Font);
+    this.Font.setTypeface(Game.UI.Typeface);
+    this.Font.setTextSize(20);
+    
+    this.__rect = new Rect();
+
     this.Paint = new Paint();
     this.Paint.setARGB(255, 255,0,0);
 };
@@ -581,37 +735,340 @@ Game.UI.ItemList.__bitmap = (function(){
     return new Bitmap.createBitmap(bitmap, 28, 58, 3, 5);
 })();
 Game.UI.extends(Game.UI.ItemList);
-Game.UI.ItemList.prototype.Text = "";
+Game.UI.ItemList.prototype.toString = function(){
+    return "ItemList";
+}
+Game.UI.ItemList.prototype.Text = "ItemList";
 Game.UI.ItemList.prototype.Select = false;
 Game.UI.ItemList.prototype.X = 0;
 Game.UI.ItemList.prototype.Y = 0;
 Game.UI.ItemList.prototype.draw = function(canvas){
-    let padding = [10, 5];
-    let bounds = new Rect();
-    this.Font.getTextBounds(this.Text, 0, this.Text.length, bounds);
-    let textHeight = bounds.bottom - bounds.top;
+    this.getRect();
+
     if(this.Select)
         canvas.drawBitmap(Game.UI.ItemList.__bitmap,
             new Rect(0, 0, 3, 5),
-            new Rect(this.X, this.Y, this.X + textHeight*.6, this.Y + textHeight), this.Paint);
-    //canvas.drawText(this.Text, this.X + padding[0] + width/2, this.Y + padding[1] + (height+(bounds.bottom-bounds.top))/2, this.Font); 
+            new Rect(this.X, this.Y, this.X + this.__height * .6, this.Y + this.__height), this.Paint);
+    
+    canvas.drawText(this.Text, this.X + this.__height, this.Y + this.__height, this.Font); 
+}
+Game.UI.ItemList.prototype.getRect = function(){
+    this.Font.getTextBounds(this.Text, 0, this.Text.length, this.__rect);
+    this.__height = this.__rect.bottom - this.__rect.top;
+    return this.__rect;
 }
 
-
-Game.MenuGame = new Game();
-Game.Font = android.graphics.Typeface.createFromFile(__dir__ + "gui/mc-typeface.ttf");
-
-Arcade.game = Game.MenuGame;
-var ArcadeMemu = {
+var ArcadeMenu = {
     MenuTextEmpty:(function(){
         let paint = new Paint();
         paint.setARGB(255, 255, 255, 255);
         paint.setTextAlign(Paint.Align.CENTER);
-        paint.setTypeface(Game.Font);
+        paint.setTypeface(Game.UI.Typeface);
         paint.setTextSize(50);
         return paint;
-    })()
+    })(),
+    Start:function(game){
+        if(!game instanceof Game)
+            throw new TypeError("Not Game.");
+        Arcade.game = game;
+    }
 };
+
+Callback.addCallback("PostLoaded", function(){
+    Game.MenuGame = new Game();
+    Arcade.game = Game.MenuGame;
+});
+
+ModAPI.registerAPI("RetroWaveGame", {
+    extends:Game.extends,
+    registerGame:Game.registerGame
+})
+
+
+
+
+// file: games/tetris.js
+
+var Tetris = function(){
+    this.initDefaultValue();
+
+
+    this.AddHandlerControl(Game.CONTROLS.UP, function(){
+        if(this.CheckValidPlace(this.Element.X, this.Element.Y, this.Element.getRotateForm()))
+            this.Element.Rotate();
+    });
+    this.AddHandlerControl(Game.CONTROLS.DOWN, function(){
+        while(this.CheckValidPlace(this.Element.X, this.Element.Y + 1, this.Element.Form))
+            this.Element.Y++;
+    });
+    this.AddHandlerControl(Game.CONTROLS.LEFT, function(){
+        if(this.CheckValidPlace(this.Element.X - 1 , this.Element.Y, this.Element.Form))
+            this.Element.TryLeft();
+    });
+    this.AddHandlerControl(Game.CONTROLS.RIGHT, function(){
+        if(this.CheckValidPlace(this.Element.X + 1 , this.Element.Y, this.Element.Form))
+            this.Element.TryRight();
+    });
+}; Game.extends(Tetris);
+Tetris.prototype.name = "Тетрис";
+Tetris.prototype.score = 0;
+Tetris.paints = [];
+(function(colors){
+    for(let i = colors.length-1; i >= 0; i--){
+        let p = new Paint();
+        p.setColor(colors[i])
+        Tetris.paints.push(p);
+    }
+})([Color.RED, Color.GREEN, Color.CYAN, Color.BLUE, Color.MAGENTA, Color.YELLOW, Color.argb(255, 255, 128, 0)]);
+Tetris.elements = [
+    [[1,1],[1,1]],
+    [[1,1,1,1]],
+    [[1,1,0],[0,1,1]],
+    [[0,1,1],[1,1,0]],
+    [[1,1,1],[0,1,0]],
+    [[1,0,0],[1,1,1]],
+    [[0,0,1],[1,1,1]]
+];
+Tetris.prototype.BorderPaint = (function(){
+    let p = new Paint();
+    p.setColor(Color.WHITE);
+    p.setStyle(Paint.Style.STROKE);
+    p.setStrokeWidth(2);
+    return p;
+})();
+Tetris.prototype.GridPaint = (function(){
+    let p = new Paint();
+    p.setARGB(64,255,255,255);
+    p.setStyle(Paint.Style.STROKE);
+    p.setStrokeWidth(2);
+    return p;
+})();
+Tetris.prototype.FontPaint = (function(){
+    let p = new Paint();
+    p.setColor(Color.WHITE);
+    p.setTypeface(Game.UI.Typeface);
+    p.setTextSize(20);
+    return p;
+})();
+Tetris.prototype.EndFontPaint = (function(){
+    let p = new Paint();
+    p.setColor(Color.WHITE);
+    p.setTypeface(Game.UI.Typeface);
+    p.setTextSize(50);
+    return p;
+})();
+Tetris.prototype.time = 0;
+Tetris.prototype.end = false;
+Tetris.prototype.__end = false;
+Tetris.prototype.tick = function(delta){
+    this.time += delta;
+    
+    if(this.time >= 1){
+        this.time-=1;
+        if(this.CheckValidPlace(this.Element.X, this.Element.Y + 1, this.Element.Form)){
+            this.Element.Y++;
+        }else if(this.Element.Y ==0){
+            this.end = true;
+        }else{
+            this.InsertElement();
+            this.CheckLines();
+            this.UpdateElement();
+        }
+    }
+}
+Tetris.prototype.CheckLines = function(){
+    let offset = 0;
+    for(let y = 0; y < 20; y++){
+        if(offset > 0){
+            for(let x = 0; x < 10; x++){    
+                this.field[y - offset][x] = this.field[y][x];
+                if(y >= 19)
+                    this.field[y][x] = null;
+            }
+        }
+        for(let x = 0; x < 10; x++){
+            if(this.field[y - offset][x] == null) break;
+            if(x == 9){
+                this.score++;
+                offset++;
+            }
+
+        }
+    }
+}
+Tetris.prototype.CheckValidPlace = function(x, y, form){
+    let height = form.length,
+        width = form[0].length;
+
+    if(y < 0 || y > 20 - height) return false;
+    if(x < 0 || x > 10 - width) return false;
+
+    for(let _x = 0; _x < width; _x++){
+        for(let _y = 0; _y < height; _y++){
+            if(form[_y][_x]){
+                if(this.field[19 - (y + _y)][x + _x] != null)
+                    return false;
+            }
+        }
+    }
+    return true;
+}
+Tetris.prototype.InsertElement = function(){
+    for(let x = 0; x < this.Element.Width; x++){
+        for(let y = 0; y < this.Element.Height; y++){
+            if(this.Element.Form[y][x]){
+                this.field[19 - (this.Element.Y + y)][this.Element.X + x] = this.Element.indexPaint;
+            }
+        }
+    }
+}
+Tetris.prototype.UpdateElement = function(){
+    this.Element = this.Next;
+    this.GenerateNextElement();
+}
+Tetris.prototype.GenerateNextElement = function(){
+    this.Next = new Tetris.Element(Tetris.elements[Utils.random(0,7)]);
+    this.Next.indexPaint = Utils.random(0,7);
+    if(this.rect)
+        this.Next.Size = this.rect.size;
+}
+Tetris.prototype.draw = function(canvas){
+    if(!this.rect){
+        this.rect = {};
+
+        this.rect.height = canvas.getHeight() - 20;
+        this.rect.width = this.rect.height / 2;
+        this.Next.Size = this.Element.Size = this.rect.size = this.rect.width / 10;
+        let rect = new Rect();
+        this.FontPaint.getTextBounds("A", 0, 1, rect);
+        this.rect.heightFont = rect.bottom-rect.top;
+    }
+
+    //Фон
+    canvas.drawColor(Color.BLACK);
+
+    //Игровое поле
+    canvas.drawRect(10, 10, this.rect.width + 10, this.rect.height + 10, this.BorderPaint);
+    for(let y = 0; y < 20; y++)
+        for(let x = 0; x < 10; x++){
+            if(this.field[y][x] != null)
+                canvas.drawRect(10 + (this.rect.size * x),       10 + this.rect.height - this.rect.size * (y + 1),
+                                10 + (this.rect.size * (x + 1)), 10 + this.rect.height - this.rect.size * y,
+                                Tetris.paints[this.field[y][x]]);
+        }
+
+    this.Element.draw(canvas);
+
+    for(let y = 0; y < 20; y++)
+        canvas.drawLine(10, 10 + this.rect.size * y, 10 + this.rect.width, 10+this.rect.size * y, this.GridPaint);
+
+    for(let y = 0; y < 10; y++)
+        canvas.drawLine(10 + this.rect.size * y, 10, 10 + this.rect.size * y, 10 + this.rect.height, this.GridPaint);
+
+    //Следующая фигура
+    canvas.drawText("Следующая фигура", this.rect.width + 20, this.rect.heightFont + 10, this.FontPaint);
+    
+    canvas.drawRect(this.rect.width + 20, this.rect.heightFont + 20,
+            this.rect.width + 90, this.rect.heightFont + 90, this.BorderPaint);
+
+    this.Next.drawSize(canvas, this.rect.width + 25, this.rect.heightFont + 25, 15);
+    //Очки
+    canvas.drawText("Очки: " + this.score, this.rect.width + 20, 2*this.rect.heightFont + 100, this.FontPaint);
+
+    
+    if(this.end){
+        let str = "Конец игры. Ваш счет: " + this.score,
+            rect = new Rect();
+        this.EndFontPaint.getTextBounds(str, 0, str.length, rect);
+        let width = canvas.getWidth(),
+            height = canvas.getHeight(),
+            heightFont = rect.bottom-rect.top,
+            widthFont = rect.right - rect.left;
+        canvas.clipRect( (width - widthFont)/2 - 20, (height - heightFont)/2 - 20,
+                        (width + widthFont)/2 + 20, (height + heightFont)/2 + 20);
+        canvas.drawColor(Color.BLACK);
+        canvas.drawText(str, (width - widthFont)/2, (height + heightFont)/2, this.EndFontPaint);
+    }
+}
+Tetris.prototype.initDefaultValue = function(){
+    this.rect = null;
+    this.score = 0;
+    this.__end = false;
+    this.end = false;
+    this.time = 0;
+
+    this.field = [];
+    for(let y = 0; y < 20; y++){
+        this.field.push([]);
+
+        for(let x = 0; x < 10; x++)
+            this.field[y].push(null);
+    }
+
+    this.GenerateNextElement();
+    this.UpdateElement();   
+}
+Tetris.prototype.close = function(){
+    this.initDefaultValue();
+    Tetris.superclass.close.apply(this);
+}
+//Element
+Tetris.Element = function(form){
+    this.__setForm(form);
+
+    this.X = 5 - Math.round(this.Width/2);
+}
+Tetris.Element.prototype.__setForm = function(form){
+    this.Form = form;
+    this.Height = form.length;
+    this.Width = form[0].length;
+}
+Tetris.Element.prototype.Rotate = function(){
+    
+
+    this.__setForm(this.getRotateForm());
+}
+Tetris.Element.prototype.getRotateForm = function(){
+    let form = [];
+    
+    for(let y = 0, ly = this.Form[0].length; y < ly; y++){
+        let row = [];
+        for(let x = this.Form.length-1; x >= 0 ; x--){
+            row.push(this.Form[x][y]);
+        }
+        form.push(row);
+    }
+    return form;
+}
+
+Tetris.Element.prototype.Y = 0;
+Tetris.Element.prototype.Size = 20;
+Tetris.Element.prototype.SetX = function(x){
+    if(x > 10 - this.Width || x < 0)
+        throw new Error("Can't set X in " + x);
+    
+    this.X = x;
+}
+Tetris.Element.prototype.TryLeft = function(){
+    try{this.SetX(this.X - 1)}catch(e){}
+}
+Tetris.Element.prototype.TryRight = function(){
+    try{this.SetX(this.X + 1)}catch(e){}
+}
+
+
+Tetris.Element.prototype.draw = function(canvas){
+    this.drawSize(canvas, 10 + this.X * this.Size, 10 + this.Y * this.Size, this.Size);
+}
+Tetris.Element.prototype.drawSize = function(canvas, _x, _y, size){
+    for(let y = this.Form.length-1; y >= 0; y--)
+        for(let x = this.Form[0].length-1; x >= 0; x--)
+            if(this.Form[y][x] == 1)
+            canvas.drawRect(_x + size * x,        _y + size * y,
+                            _x + size * (x + 1),  _y + size * (y + 1), Tetris.paints[this.indexPaint]);
+}
+
+Game.registerGame("tetris", Tetris);
 
 
 
@@ -793,7 +1250,7 @@ var Tardis = {
 Saver.addSavesScope("RW_Tardis",
     function read(scope){
         Tardis.spawned = scope.spawned || false;
-        Tardis.__pos = scope.posistion || {x:0, y:0, z:0};
+        Tardis.__pos = scope.posistion || {x:0, y:0, z:0} ;
 
         Tardis.player.setInBlock(Tardis.__pos.x, Tardis.__pos.y, Tardis.__pos.z, 16);
     },
@@ -816,20 +1273,6 @@ Block.createBlockWithRotateAndModel("lenin", "Lenin's bust", "lena bl", "lena_bl
 
 IDRegistry.genBlockID("old_phone");
 Block.createBlockWithRotateAndModel("old_phone", "Old Phone", "telePHon", "telePHon", { x:.5, z:.5 });
-
-
-
-
-// file: utils.js
-
-const Utils = {
-    random:function(min, max){
-        if(min === undefined) min=0;
-        if(max === undefined) max=min+10;
-
-        return Math.floor((max-min) * Math.random() + min);
-    }
-}
 
 
 

@@ -9,7 +9,13 @@ Arcade.window = (function(){
     popup.setWidth(-1);
     popup.setHeight(-1);
     let surface, surfaceHolder;
-
+    let errorPaint = (function(){
+        let p = new Paint();
+        p.setColor(Color.WHITE);
+        p.setTypeface(Game.UI.Typeface);
+        p.setTextSize(20);
+        return p;
+    })();
 
     let thisWindow =  {
         open:function(){
@@ -19,7 +25,7 @@ Arcade.window = (function(){
             });
             thisWindow.opened = true;
             new Thread(function(){
-                var canvas = null;
+                var canvas = null, error = false;
                 thisWindow.drawing = true;
                 let lastTime = System.currentTimeMillis();
                 while (thisWindow.opened) {
@@ -34,11 +40,17 @@ Arcade.window = (function(){
 
                         Arcade.game.draw(canvas);
                     } catch(e){
-                        //canvas.drawColor(Color.BLUE);
-                        alert(e);
+                        canvas.drawColor(Color.BLUE);
+                        e = e.toString();
+                        let rect = new Rect();
+                        errorPaint.getTextBounds(e, 0, e.length || e.length(), rect)
+                        canvas.drawText(e, 10, 10 + rect.bottom - rect.top, errorPaint)
+                        error = true;
                     }finally {
                         if (canvas != null)
                             surface.unlockCanvasAndPost(canvas);
+                        if(error)
+                            break;
                     }
                 }
                 thisWindow.drawing = false;

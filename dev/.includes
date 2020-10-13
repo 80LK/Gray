@@ -7,8 +7,8 @@ radio/radio.js
 gramophone/block.js
 
 arcade/arcade.js
-arcade/window.js
 arcade/game.js
+arcade/window.js
 
 games/tetris.js
 
