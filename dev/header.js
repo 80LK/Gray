@@ -57,6 +57,9 @@ var View = android.view.View,
    Bitmap = android.graphics.Bitmap,
    Rect = android.graphics.Rect,
    Paint = android.graphics.Paint,
+   Color = android.graphics.Color,
+   System = java.lang.System,
+   MotionEvent = android.view.MotionEvent,
    BitmapFactory = android.graphics.BitmapFactory;
    
 var ctx = UI.getContext();

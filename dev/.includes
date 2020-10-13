@@ -1,5 +1,7 @@
 header.js
 
+utils.js
+
 radio/radio.js
 
 gramophone/block.js
@@ -7,6 +9,8 @@ gramophone/block.js
 arcade/arcade.js
 arcade/window.js
 arcade/game.js
+
+games/tetris.js
 
 dendy/dendy.js
 
@@ -18,5 +22,3 @@ tv/tv.js
 tardis/tardis.js
 
 decor.js
-
-utils.js

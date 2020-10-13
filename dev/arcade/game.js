@@ -23,7 +23,7 @@ var Game = function (){
     let size;
     for(let i = 0, l = this.gameSID.length; i < l; i++){
         let item = new Game.UI.ItemList();
-        item.Text = this.gameSID[i];
+        item.Text = Game.__list[this.gameSID[i]].name;
         if(!size){
             item.getRect();
             size = item.__height;
@@ -42,7 +42,9 @@ var Game = function (){
     this.AddHandlerControl(Game.CONTROLS.DOWN, function () {
         this.Next();
     });
-    this.AddHandlerControl(Game.CONTROLS.LEFT, function () {});
+    this.AddHandlerControl(Game.CONTROLS.LEFT, function () {
+        ArcadeMenu.Start(Game.__list[this.gameSID[this.__current]]);
+    });
     this.AddHandlerControl(Game.CONTROLS.RIGHT, function () {
         ArcadeMenu.Start(Game.__list[this.gameSID[this.__current]]);
     });
@@ -66,6 +68,7 @@ Game.prototype.toString = function(){
     return "Game[" + this.name + "]";
 }
 Game.prototype.__controls = null;
+Game.prototype.tick = function(){};
 Game.prototype.draw = function (canvas) { 
     //Draw background
     canvas.drawColor(android.graphics.Color.BLACK);
@@ -92,17 +95,18 @@ Game.CONTROLS = {
     RIGHT: 3
 };
 Game.__list = {};
+Game.extends = function(_game){
+    var F = function(){};
+    F.prototype = Game.prototype;
+    _game.prototype = new F();
+    _game.prototype.constructor = _game;
+    _game.superclass = Game.prototype;
+}
 Game.registerGame = function (name, _game) {
     if(Game.__list.hasOwnProperty(name))
         throw new Error("Game \""+name+"\" was been register.");
 
-    var F = function(){};
-    F.prototype = Game.prototype;
-    _game.prototype = new F();
     _game.prototype.sid = name;
-    _game.prototype.constructor = _game;
-    _game.superclass = Game.prototype;
-
     Game.__list[name] = new _game();
 }
 
@@ -181,3 +185,8 @@ Callback.addCallback("PostLoaded", function(){
     Game.MenuGame = new Game();
     Arcade.game = Game.MenuGame;
 });
+
+ModAPI.registerAPI("RetroWaveGame", {
+    extends:Game.extends,
+    registerGame:Game.registerGame
+})

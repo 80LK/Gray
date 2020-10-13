@@ -1,3 +1,4 @@
+//MotionEvent
 var Arcade = {
     game:null,
     window:null
@@ -19,8 +20,13 @@ Arcade.window = (function(){
             thisWindow.opened = true;
             new Thread(function(){
                 var canvas = null;
-                alert("Start draw");
+                thisWindow.drawing = true;
+                let lastTime = System.currentTimeMillis();
                 while (thisWindow.opened) {
+                    let currentTime = System.currentTimeMillis();
+                    Arcade.game.tick((currentTime - lastTime)/1000);
+                    lastTime = currentTime;
+
                     canvas = null;
                     try {
                         canvas = surface.lockCanvas();
@@ -28,32 +34,34 @@ Arcade.window = (function(){
 
                         Arcade.game.draw(canvas);
                     } catch(e){
+                        //canvas.drawColor(Color.BLUE);
                         alert(e);
-                        break;
                     }finally {
                         if (canvas != null)
                             surface.unlockCanvasAndPost(canvas);
                     }
                 }
-                alert("stop draw");
+                thisWindow.drawing = false;
             }).start();
         },
         opened:false,
+        drawing:false,
         close:function(){
             if(!thisWindow.opened) return;
         
             thisWindow.opened = false;
+            while(thisWindow.drawing){}
             runUI(function(){
                 popup.dismiss();
             });
         }
     };
+    let rootBitmap = new BitmapFactory.decodeFile(__dir__ + "gui/arcadeUI.png");
     
 
     let rootLayout = new RelativeLayout(ctx);
     rootLayout.setBackgroundDrawable((function(){
-        let bitmap = new BitmapFactory.decodeFile(__dir__ + "gui/arcadeUI.png");
-        bitmap = new Bitmap.createBitmap(bitmap, 0, 0, 64, 58);
+        let bitmap = new Bitmap.createBitmap(rootBitmap, 0, 0, 64, 58);
         bitmap = Bitmap.createScaledBitmap(bitmap, 64 * 8, 58 * 8, false);
         return createNinePatch(bitmap, [23 * 8, 24 * 8, 40 * 8, 41 * 8], [5 * 8, 37 * 8], [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]);
     })());
@@ -70,12 +78,26 @@ Arcade.window = (function(){
     
 
     let exitButton = new ImageView(ctx);
-    exitButton.setImageBitmap((function(){
-        let bitmap = new BitmapFactory.decodeFile(__dir__ + "gui/arcadeUI.png");
-        bitmap = new Bitmap.createBitmap(bitmap, 28, 63, 3, 3);
-        return Bitmap.createScaledBitmap(bitmap, 3 * 8, 3 * 8, false);;
-    })());
+    let exitButtonDefaultBitmap = (function(){
+            let bitmap = new Bitmap.createBitmap(rootBitmap, 28, 63, 3, 3);
+            return Bitmap.createScaledBitmap(bitmap, 3 * 8, 3 * 8, false);;
+        })(),
+        exitButtonPressBitmap = (function(){
+            let bitmap = new Bitmap.createBitmap(rootBitmap, 28, 66, 3, 3);
+            return Bitmap.createScaledBitmap(bitmap, 3 * 8, 3 * 8, false);;
+        })();
+    exitButton.setImageBitmap(exitButtonDefaultBitmap);
     exitButton.setOnClickListener(thisWindow.close);
+    exitButton.setOnTouchListener(function(b, c){
+        var f = c.getActionMasked();
+        if (f == MotionEvent.ACTION_DOWN) {
+            b.setImageBitmap(exitButtonPressBitmap);
+        }
+        if (f == MotionEvent.ACTION_CANCEL || f == MotionEvent.ACTION_UP) {
+            b.setImageBitmap(exitButtonDefaultBitmap);
+        }
+        return false;
+    })
     let exitButtonParams  = new RelativeLayout.LayoutParams(-2, -2);
     exitButtonParams.setMargins(0, 8 * 5, 8 * 5, 0);
     exitButtonParams.addRule(RelativeLayout.ALIGN_PARENT_RIGHT);
