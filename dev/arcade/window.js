@@ -80,11 +80,11 @@ Arcade.window = (function(){
     let exitButton = new ImageView(ctx);
     let exitButtonDefaultBitmap = (function(){
             let bitmap = new Bitmap.createBitmap(rootBitmap, 28, 63, 3, 3);
-            return Bitmap.createScaledBitmap(bitmap, 3 * 8, 3 * 8, false);;
+            return Bitmap.createScaledBitmap(bitmap, 3 * 15, 3 * 15, false);
         })(),
         exitButtonPressBitmap = (function(){
             let bitmap = new Bitmap.createBitmap(rootBitmap, 28, 66, 3, 3);
-            return Bitmap.createScaledBitmap(bitmap, 3 * 8, 3 * 8, false);;
+            return Bitmap.createScaledBitmap(bitmap, 3 * 10, 3 * 10, false);
         })();
     exitButton.setImageBitmap(exitButtonDefaultBitmap);
     exitButton.setOnClickListener(thisWindow.close);
@@ -104,14 +104,28 @@ Arcade.window = (function(){
     rootLayout.addView(exitButton, exitButtonParams);
 
     let buttonControlUp = new ImageView(ctx);
-    buttonControlUp.setImageBitmap((function(){
-        let bitmap = new BitmapFactory.decodeFile(__dir__ + "gui/arcadeUI.png");
-        bitmap = new Bitmap.createBitmap(bitmap, 21, 58, 7, 7);
-        return Bitmap.createScaledBitmap(bitmap, 7 * 8, 7 * 8, false);;
-    })());
+    let buttonControlUpDefaultBitmap = (function(){
+            let bitmap = new Bitmap.createBitmap(rootBitmap, 21, 58, 7, 7);
+            return Bitmap.createScaledBitmap(bitmap, 7 * 8, 7 * 8, false);
+        })(),
+        buttonControlUpPressBitmap = (function(){
+            let bitmap = new Bitmap.createBitmap(rootBitmap, 21, 65, 7, 7);
+            return Bitmap.createScaledBitmap(bitmap, 7 * 8, 7 * 8, false);
+        })();
+    buttonControlUp.setImageBitmap(buttonControlUpDefaultBitmap);
     buttonControlUp.setOnClickListener(function(){
         Arcade.game.invoke(Game.CONTROLS.UP)
     });
+    buttonControlUp.setOnTouchListener(function(b, c){
+        var f = c.getActionMasked();
+        if (f == MotionEvent.ACTION_DOWN) {
+            b.setImageBitmap(buttonControlUpPressBitmap);
+        }
+        if (f == MotionEvent.ACTION_CANCEL || f == MotionEvent.ACTION_UP) {
+            b.setImageBitmap(buttonControlUpDefaultBitmap);
+        }
+        return false;
+    })
     let buttonControlUpParams  = new RelativeLayout.LayoutParams(-2, -2);
     buttonControlUpParams.addRule(RelativeLayout.ALIGN_PARENT_BOTTOM);
     buttonControlUpParams.addRule(RelativeLayout.ALIGN_PARENT_RIGHT);
@@ -119,14 +133,29 @@ Arcade.window = (function(){
     rootLayout.addView(buttonControlUp, buttonControlUpParams);
 
     let buttonControlDown = new ImageView(ctx);
-    buttonControlDown.setImageBitmap((function(){
-        let bitmap = new BitmapFactory.decodeFile(__dir__ + "gui/arcadeUI.png");
-        bitmap = new Bitmap.createBitmap(bitmap, 14, 58, 7, 7);
-        return Bitmap.createScaledBitmap(bitmap, 7 * 8, 7 * 8, false);;
-    })());
+    let buttonControlDownDefaultBitmap = (function(){
+        let bitmap = new Bitmap.createBitmap(rootBitmap, 14, 58, 7, 7);
+        return Bitmap.createScaledBitmap(bitmap, 7 * 8, 7 * 8, false);
+    })(),
+    buttonControlDownPressBitmap = (function(){
+        let bitmap = new Bitmap.createBitmap(rootBitmap, 14, 65, 7, 7);
+        return Bitmap.createScaledBitmap(bitmap, 7 * 8, 7 * 8, false);
+    })();
+
+    buttonControlDown.setImageBitmap(buttonControlDownDefaultBitmap);
     buttonControlDown.setOnClickListener(function(){
         Arcade.game.invoke(Game.CONTROLS.DOWN)
     });
+    buttonControlDown.setOnTouchListener(function(b, c){
+        var f = c.getActionMasked();
+        if (f == MotionEvent.ACTION_DOWN) {
+            b.setImageBitmap(buttonControlDownPressBitmap);
+        }
+        if (f == MotionEvent.ACTION_CANCEL || f == MotionEvent.ACTION_UP) {
+            b.setImageBitmap(buttonControlDownDefaultBitmap);
+        }
+        return false;
+    })
     let buttonControlDownParams  = new RelativeLayout.LayoutParams(-2, -2);
     buttonControlDownParams.addRule(RelativeLayout.ALIGN_PARENT_BOTTOM);
     buttonControlDownParams.addRule(RelativeLayout.ALIGN_PARENT_RIGHT);
@@ -134,28 +163,58 @@ Arcade.window = (function(){
     rootLayout.addView(buttonControlDown, buttonControlDownParams);
 
     let buttonControlLeft = new ImageView(ctx);
-    buttonControlLeft.setImageBitmap((function(){
-        let bitmap = new BitmapFactory.decodeFile(__dir__ + "gui/arcadeUI.png");
-        bitmap = new Bitmap.createBitmap(bitmap, 0, 58, 7, 7);
-        return Bitmap.createScaledBitmap(bitmap, 7 * 8, 7 * 8, false);;
-    })());
+    let buttonControlLeftDefaultBitmap = (function(){
+        let bitmap = new Bitmap.createBitmap(rootBitmap, 0, 58, 7, 7);
+        return Bitmap.createScaledBitmap(bitmap, 7 * 8, 7 * 8, false);
+    })(),
+    buttonControlLeftPressBitmap = (function(){
+        let bitmap = new Bitmap.createBitmap(rootBitmap, 0, 65, 7, 7);
+        return Bitmap.createScaledBitmap(bitmap, 7 * 8, 7 * 8, false);
+    })();
+
+    buttonControlLeft.setImageBitmap(buttonControlLeftDefaultBitmap);
     buttonControlLeft.setOnClickListener(function(){
         Arcade.game.invoke(Game.CONTROLS.LEFT)
     });
+    buttonControlLeft.setOnTouchListener(function(b, c){
+        var f = c.getActionMasked();
+        if (f == MotionEvent.ACTION_DOWN) {
+            b.setImageBitmap(buttonControlLeftPressBitmap);
+        }
+        if (f == MotionEvent.ACTION_CANCEL || f == MotionEvent.ACTION_UP) {
+            b.setImageBitmap(buttonControlLeftDefaultBitmap);
+        }
+        return false;
+    })
     let buttonControlLeftParams  = new RelativeLayout.LayoutParams(-2, -2);
     buttonControlLeftParams.addRule(RelativeLayout.ALIGN_PARENT_BOTTOM);
     buttonControlLeftParams.setMargins(150, 0, 0, 8 * 2);
     rootLayout.addView(buttonControlLeft, buttonControlLeftParams);
 
     let buttonControlRight = new ImageView(ctx);
-    buttonControlRight.setImageBitmap((function(){
-        let bitmap = new BitmapFactory.decodeFile(__dir__ + "gui/arcadeUI.png");
-        bitmap = new Bitmap.createBitmap(bitmap, 7, 58, 7, 7);
-        return Bitmap.createScaledBitmap(bitmap, 7 * 8, 7 * 8, false);;
-    })());
+    let buttonControlRightDefaultBitmap = (function(){
+        let bitmap = new Bitmap.createBitmap(rootBitmap, 7, 58, 7, 7);
+        return Bitmap.createScaledBitmap(bitmap, 7 * 8, 7 * 8, false);
+    })(),
+    buttonControlRightPressBitmap = (function(){
+        let bitmap = new Bitmap.createBitmap(rootBitmap, 7, 65, 7, 7);
+        return Bitmap.createScaledBitmap(bitmap, 7 * 8, 7 * 8, false);
+    })();
+
+    buttonControlRight.setImageBitmap(buttonControlRightDefaultBitmap);
     buttonControlRight.setOnClickListener(function(){
         Arcade.game.invoke(Game.CONTROLS.RIGHT)
     });
+    buttonControlRight.setOnTouchListener(function(b, c){
+        var f = c.getActionMasked();
+        if (f == MotionEvent.ACTION_DOWN) {
+            b.setImageBitmap(buttonControlRightPressBitmap);
+        }
+        if (f == MotionEvent.ACTION_CANCEL || f == MotionEvent.ACTION_UP) {
+            b.setImageBitmap(buttonControlRightDefaultBitmap);
+        }
+        return false;
+    })
     let buttonControlRightParams  = new RelativeLayout.LayoutParams(-2, -2);
     buttonControlRightParams.addRule(RelativeLayout.ALIGN_PARENT_BOTTOM);
     buttonControlRightParams.setMargins(270, 0, 0, 8 * 2);
