@@ -19,7 +19,10 @@ var Tetris = function(){
             this.Element.TryRight();
     });
 }; Game.extends(Tetris);
+
 Tetris.prototype.name = "Тетрис";
+Tetris.Arcade = true;
+
 Tetris.prototype.score = 0;
 Tetris.paints = [];
 (function(colors){
@@ -68,7 +71,7 @@ Tetris.prototype.EndFontPaint = (function(){
 })();
 Tetris.prototype.time = 0;
 Tetris.prototype.end = false;
-Tetris.prototype.__end = false;
+
 Tetris.prototype.tick = function(delta){
     this.time += delta;
     

@@ -63,17 +63,16 @@ Arcade.window = (function(){
         
             thisWindow.opened = false;
             while(thisWindow.drawing){}
+            Arcade.game = new ArcadeMenu();
             runUI(function(){
                 popup.dismiss();
             });
         }
     };
-    let rootBitmap = new BitmapFactory.decodeFile(__dir__ + "gui/arcadeUI.png");
-    
 
     let rootLayout = new RelativeLayout(ctx);
     rootLayout.setBackgroundDrawable((function(){
-        let bitmap = new Bitmap.createBitmap(rootBitmap, 0, 0, 64, 58);
+        let bitmap = new Bitmap.createBitmap(ArcadeUIBitmap, 0, 0, 64, 58);
         bitmap = Bitmap.createScaledBitmap(bitmap, 64 * 8, 58 * 8, false);
         return createNinePatch(bitmap, [23 * 8, 24 * 8, 40 * 8, 41 * 8], [5 * 8, 37 * 8], [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]);
     })());
@@ -91,11 +90,11 @@ Arcade.window = (function(){
 
     let exitButton = new ImageView(ctx);
     let exitButtonDefaultBitmap = (function(){
-            let bitmap = new Bitmap.createBitmap(rootBitmap, 28, 63, 3, 3);
+            let bitmap = new Bitmap.createBitmap(ArcadeUIBitmap, 28, 63, 3, 3);
             return Bitmap.createScaledBitmap(bitmap, 3 * 15, 3 * 15, false);
         })(),
         exitButtonPressBitmap = (function(){
-            let bitmap = new Bitmap.createBitmap(rootBitmap, 28, 66, 3, 3);
+            let bitmap = new Bitmap.createBitmap(ArcadeUIBitmap, 28, 66, 3, 3);
             return Bitmap.createScaledBitmap(bitmap, 3 * 10, 3 * 10, false);
         })();
     exitButton.setImageBitmap(exitButtonDefaultBitmap);
@@ -117,11 +116,11 @@ Arcade.window = (function(){
 
     let buttonControlUp = new ImageView(ctx);
     let buttonControlUpDefaultBitmap = (function(){
-            let bitmap = new Bitmap.createBitmap(rootBitmap, 21, 58, 7, 7);
+            let bitmap = new Bitmap.createBitmap(ArcadeUIBitmap, 21, 58, 7, 7);
             return Bitmap.createScaledBitmap(bitmap, 7 * 8, 7 * 8, false);
         })(),
         buttonControlUpPressBitmap = (function(){
-            let bitmap = new Bitmap.createBitmap(rootBitmap, 21, 65, 7, 7);
+            let bitmap = new Bitmap.createBitmap(ArcadeUIBitmap, 21, 65, 7, 7);
             return Bitmap.createScaledBitmap(bitmap, 7 * 8, 7 * 8, false);
         })();
     buttonControlUp.setImageBitmap(buttonControlUpDefaultBitmap);
@@ -146,11 +145,11 @@ Arcade.window = (function(){
 
     let buttonControlDown = new ImageView(ctx);
     let buttonControlDownDefaultBitmap = (function(){
-        let bitmap = new Bitmap.createBitmap(rootBitmap, 14, 58, 7, 7);
+        let bitmap = new Bitmap.createBitmap(ArcadeUIBitmap, 14, 58, 7, 7);
         return Bitmap.createScaledBitmap(bitmap, 7 * 8, 7 * 8, false);
     })(),
     buttonControlDownPressBitmap = (function(){
-        let bitmap = new Bitmap.createBitmap(rootBitmap, 14, 65, 7, 7);
+        let bitmap = new Bitmap.createBitmap(ArcadeUIBitmap, 14, 65, 7, 7);
         return Bitmap.createScaledBitmap(bitmap, 7 * 8, 7 * 8, false);
     })();
 
@@ -176,11 +175,11 @@ Arcade.window = (function(){
 
     let buttonControlLeft = new ImageView(ctx);
     let buttonControlLeftDefaultBitmap = (function(){
-        let bitmap = new Bitmap.createBitmap(rootBitmap, 0, 58, 7, 7);
+        let bitmap = new Bitmap.createBitmap(ArcadeUIBitmap, 0, 58, 7, 7);
         return Bitmap.createScaledBitmap(bitmap, 7 * 8, 7 * 8, false);
     })(),
     buttonControlLeftPressBitmap = (function(){
-        let bitmap = new Bitmap.createBitmap(rootBitmap, 0, 65, 7, 7);
+        let bitmap = new Bitmap.createBitmap(ArcadeUIBitmap, 0, 65, 7, 7);
         return Bitmap.createScaledBitmap(bitmap, 7 * 8, 7 * 8, false);
     })();
 
@@ -205,11 +204,11 @@ Arcade.window = (function(){
 
     let buttonControlRight = new ImageView(ctx);
     let buttonControlRightDefaultBitmap = (function(){
-        let bitmap = new Bitmap.createBitmap(rootBitmap, 7, 58, 7, 7);
+        let bitmap = new Bitmap.createBitmap(ArcadeUIBitmap, 7, 58, 7, 7);
         return Bitmap.createScaledBitmap(bitmap, 7 * 8, 7 * 8, false);
     })(),
     buttonControlRightPressBitmap = (function(){
-        let bitmap = new Bitmap.createBitmap(rootBitmap, 7, 65, 7, 7);
+        let bitmap = new Bitmap.createBitmap(ArcadeUIBitmap, 7, 65, 7, 7);
         return Bitmap.createScaledBitmap(bitmap, 7 * 8, 7 * 8, false);
     })();
 

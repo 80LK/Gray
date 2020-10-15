@@ -61,7 +61,8 @@ var View = android.view.View,
    System = java.lang.System,
    MotionEvent = android.view.MotionEvent,
    BitmapFactory = android.graphics.BitmapFactory;
-   
+
+var ArcadeUIBitmap = new BitmapFactory.decodeFile(__dir__ + "gui/arcadeUI.png");
 var ctx = UI.getContext();
 var ICGame = Game;
 

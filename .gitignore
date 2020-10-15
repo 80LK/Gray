@@ -10,3 +10,5 @@ icc.exe
 *.jpg
 *.oga
 *.psd
+dev/preloader
+*.zip

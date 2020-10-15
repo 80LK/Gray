@@ -6,13 +6,15 @@ radio/radio.js
 
 gramophone/block.js
 
+games/game.js
+
+arcade/menu.js
 arcade/arcade.js
-arcade/game.js
 arcade/window.js
 
-games/tetris.js
-
 dendy/dendy.js
+
+games/tetris.js
 
 cooler/cooler.js
 cooler/interface.js
