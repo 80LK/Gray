@@ -10,5 +10,5 @@ icc.exe
 *.jpg
 *.oga
 *.psd
-dev/preloader
 *.zip
+dev/preloader/sec.js
