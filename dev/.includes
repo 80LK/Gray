@@ -4,7 +4,7 @@ utils.js
 
 radio/radio.js
 
-gramophone/block.js
+#gramophone/block.js
 
 games/game.js
 
@@ -12,7 +12,7 @@ arcade/menu.js
 arcade/arcade.js
 arcade/window.js
 
-dendy/dendy.js
+#dendy/dendy.js
 
 games/tetris.js
 

@@ -2,7 +2,7 @@
 BUILD INFO:
   dir: dev
   target: mod.js
-  files: 14
+  files: 12
 */
 
 
@@ -19,7 +19,12 @@ BUILD INFO:
                          by WolfTeam & Diskrizy
 */
 
-Block.createBlockWithRotateAndModel = function(sid, name, model, texture, offset, blockTexture){
+const DEBUG = (function(){
+   var config = FileTools.ReadJSON(__packdir__ + "/innercore/config.json") || {};
+   return config["developer_mode"] === true;
+})();
+
+Block.createBlockWithRotateAndModel = function(sid, name, model, texture, offset, blockTexture, inCreative){
     if(typeof texture == "string")
         texture = {name:texture};
     
@@ -31,10 +36,13 @@ Block.createBlockWithRotateAndModel = function(sid, name, model, texture, offset
 
    if(!offset) offset = {};
 
+   if(inCreative === undefined)
+      inCreative = true;
+
    Block.createBlockWithRotation(sid, [{
       name:name,
       texture: [[blockTexture, 0]],
-      inCreative:true
+      inCreative:inCreative
    }]);
 
 
@@ -72,7 +80,8 @@ var View = android.view.View,
    System = java.lang.System,
    MotionEvent = android.view.MotionEvent,
    BitmapFactory = android.graphics.BitmapFactory;
-   
+
+var ArcadeUIBitmap = new BitmapFactory.decodeFile(__dir__ + "gui/arcadeUI.png");
 var ctx = UI.getContext();
 var ICGame = Game;
 
@@ -136,191 +145,209 @@ const Utils = {
 
 
 
-// file: radio/radio.js
+// file: games/game.js
 
-IDRegistry.genBlockID("radio");
-Block.createBlockWithRotateAndModel("radio", "Radio", "radio", "radio", { x:.5, z:.5 }, "planks");
+var Game = function (){};
+Game.prototype.AddHandlerControl = function (controls, event) {
+    if (!this.__controls)
+        this.__controls = [[], [], [], []];
 
-TileEntity.registerPrototype(BlockID.radio, {
-    defaultValue:{
-        playing:false
-    },
-    init:function(){
-        this.soundPlayer = new Sound();
-        this.soundPlayer.setInBlock(this.x, this.y, this.z, 5);
-        this.soundPlayer.setOnCompletion((function(){
-            if(this.data.playing){
-                this.soundPlayer.setSource(RadioFiles[Utils.random(0, RadioFiles.length)]);
-                this.soundPlayer.play();
-            }
-        }).bind(this))
-    },
-    click:function(){
-        if(this.data.playing){
-            this.soundPlayer.stop();
-            this.data.playing = false;
-        }else{
-            this.soundPlayer.setSource(RadioFiles[Utils.random(0, RadioFiles.length)]);
-            this.soundPlayer.play();
-
-            this.data.playing = true;
-        }
+    this.__controls[controls].push(event.bind(this));
+}
+Game.prototype.invoke = function (control) {
+    if (this.__controls === null) return;
+    
+    let events = this.__controls[control];
+    for (let i in events) {
+        events[i]();
     }
-});
+}
+Game.prototype.sid = "game_interface";
+Game.prototype.toString = function(){
+    return "Game[" + this.name + "]";
+}
+Game.prototype.__controls = null;
+Game.prototype.tick = function(){};
+Game.prototype.draw = function (canvas){}
+Game.CONTROLS = {
+    UP: 0,
+    DOWN: 1,
+    LEFT: 2,
+    RIGHT: 3
+};
+Game.__list = {};
+Game.extends = function(_game){
+    var F = function(){};
+    F.prototype = Game.prototype;
+    _game.prototype = new F();
+    _game.prototype.constructor = _game;
+    _game.superclass = Game.prototype;
+}
+Game.registerGame = function (name, _game) {
+    if(Game.__list.hasOwnProperty(name))
+        throw new Error("Game \""+name+"\" was been register.");
 
-var RadioFiles = (function(){
-    let ret = [];
-    let files = FileTools.GetListOfFiles(__dir__ + "sounds/radio/");
+    _game.prototype.sid = name;
+    Game.__list[name] = _game;
+}
 
-    for(let i in files)
-        ret.push(__dir__+"sounds/radio/" + files[i].getName());
+Game.UI = {};
+Game.UI.Typeface = android.graphics.Typeface.createFromFile(__dir__ + "gui/mc-typeface.ttf");
 
-    return ret;
+ModAPI.registerAPI("RetroWaveGame", Game)
+
+
+
+
+// file: arcade/menu.js
+
+var ArcadeMenu = function(){
+    this.elements = [];
+    this.gameSID = (function(){
+        var r = [];
+        for(let i in Game.__list){
+            let game = Game.__list[i];
+            if(game.Arcade){
+                r.push(i);
+            }
+        }
+        return r;
+    })();
+    this.__current = 0;
+
+    this.Next = function(){
+        if(this.__current == this.elements.length-1)
+            this.Select(0);
+        else
+            this.Select(this.__current+1);
+    }
+    this.Prev = function(){
+        if(this.__current == 0)
+            this.Select(this.elements.length-1);
+        else
+            this.Select(this.__current-1);
+    }
+    this.Select = function(i){
+        this.elements[this.__current].Select = false;
+        this.elements[this.__current = i].Select = true;
+    }
+
+    let size;
+    for(let i = 0, l = this.gameSID.length; i < l; i++){
+        let item = new ArcadeMenu.UI.ItemList();
+        item.Text = Game.__list[this.gameSID[i]].prototype.name;
+        if(!size){
+            item.getRect();
+            size = item.__height;
+        }
+        item.X = 10;
+        item.Y = 10 + (size + 10) * i;
+        if(i==0)
+            item.Select = true;
+
+        this.elements.push(item);
+    }
+
+    this.AddHandlerControl(Game.CONTROLS.UP, function () {
+        this.Prev();
+    });
+    this.AddHandlerControl(Game.CONTROLS.DOWN, function () {
+        this.Next();
+    });
+    this.AddHandlerControl(Game.CONTROLS.LEFT, function () {
+        this.Start(Game.__list[this.gameSID[this.__current]]);
+    });
+    this.AddHandlerControl(Game.CONTROLS.RIGHT, function () {
+        this.Start(Game.__list[this.gameSID[this.__current]]);
+    });
+}; Game.extends(ArcadeMenu);
+ArcadeMenu.prototype.sid = "arcade_menu";
+ArcadeMenu.prototype.MenuTextEmpty = (function(){
+    let paint = new Paint();
+    paint.setARGB(255, 255, 255, 255);
+    paint.setTextAlign(Paint.Align.CENTER);
+    paint.setTypeface(Game.UI.Typeface);
+    paint.setTextSize(50);
+    return paint;
 })();
 
-ModAPI.registerAPI("RetroWaveRadio", {
-    addFile:function(path){
-        RadioFiles.push(path);
-    },
-    addFiles:function(paths){
-        RadioFiles = RadioFiles.concat(paths);
+ArcadeMenu.prototype.Start = function(game){
+    if(!game instanceof Game)
+        throw new TypeError("Not Game.");
+
+    Arcade.game = new game();
+};
+ArcadeMenu.prototype.draw = function (canvas) { 
+    //Draw background
+    canvas.drawColor(android.graphics.Color.BLACK);
+
+    //Draw "No games"
+    if(this.elements.length == 0){
+        let bounds = new Rect();
+        let textToDraw = "Игр не найдено"
+        this.MenuTextEmpty.getTextBounds(textToDraw, 0, textToDraw.length, bounds);
+        return canvas.drawText(textToDraw, canvas.getWidth()/2, (canvas.getHeight()+(bounds.bottom-bounds.top))/2, this.MenuTextEmpty); 
     }
-})
 
-
-
-
-// file: gramophone/block.js
-
-IDRegistry.genBlockID("gramophone");
-Block.createBlockWithRotateAndModel("gramophone", "Gramophone", "gramophone", "gramophone", { x:0, z:0 }, "iron_block");
-var gramophoneOffset = [
-    [19/32, 19/32],
-    [13/32, 13/32],
-    [19/32, 13/32],
-    [13/32, 19/32]
-];
-TileEntity.registerPrototype(BlockID.gramophone, {
-    defaultData:{
-        disk:null,
-        playing:false
-    },
-    init:function(){
-        this.player = new Sound();
-        this.tile = World.getBlock(this.x, this.y, this.z);
-        
-        alert(this.tile.data);
-
-        this.offsetDisk = gramophoneOffset[this.tile.data];
-        
-
-        this.player.setInBlock(this.x, this.y, this.z, 5);
-        this.player.setOnCompletion((function(){ this.data.playing = false; }).bind(this));
-
-        this.__extraxtDisk = this.__extraxtDisk.bind(this);
-        this.__insertDisk = this.__insertDisk.bind(this);
-
-        
-        this.animate = new Animation.Item(this.x + this.offsetDisk[0], this.y + (3.5 / 16), this.z + this.offsetDisk[1]);
-        //this.animate = new Animation.Item(this.x + .5, this.y + (3.5 / 16), this.z + .5);
-        if(this.data.disk)
-            this.__insertDisk(this.data.disk);
-    },
-    __insertDisk:function(id){
-        this.data.disk = id;
-        this.player.setSource(GramophoneDisks.getSource(this.data.disk));
-        this.player.setSource(GramophoneDisks.getSource(id));
-        this.data.rotate = 0;
-        this.animate.describeItem({
-            id: this.data.disk,
-            count: 1,
-            data: 0,
-            size: 1,
-            rotation: [Math.PI/2, 0, 0],
-            notRandomize: true
-        });
-        this.animate.loadCustom((function(){
-                if(!this.animate.translated && this.animate.transform()){
-                    this.animate.translated = true;
-                }
-
-                if(this.data.playing){
-                    this.animate.transform().rotate(0, 0, Math.PI/40);
-                }
-            }).bind(this));
-    },
-    __extraxtDisk:function(){
-        if(this.data.disk != null){
-            World.drop(this.x, this.y+1, this.z, this.data.disk, 1);            
-            this.player.stop();
-            this.data.disk = null;
-            this.data.playing = false;
-            this.animate.destroy();
-            ICGame.prevent();
-        }
-    },
-    click:function(id, count, data){
-        
-        if(Entity.getSneaking(Player.get())){
-            this.__extraxtDisk();
-            return;
-        }
-        if(GramophoneDisks.isDisk(id)){
-            if(this.data.disk)
-                this.__extraxtDisk();
-
-            this.__insertDisk(id);
-            Player.setCarriedItem(0,0,0);
-            return;
-        }
-        
-        if(this.data.playing){
-            this.player.pause();
-            this.data.playing = false;
-        }else{
-            this.player.play();
-            this.data.playing = true;
-        }
-    },
-    destroyBlock:function(){
-        this.__extraxtDisk();
+    for(let i in this.elements){
+        this.elements[i].draw(canvas);
     }
+}
+
+ArcadeMenu.UI = {}
+ArcadeMenu.UI.extends = function (Child, Parent) {
+    if(Parent === undefined)
+        Parent = ArcadeMenu.UI.IVeiw;
+
+    var F = function(){};
+    F.prototype = Parent.prototype;
+    Child.prototype = new F();
+    Child.prototype.constructor = Child;
+
+    Child.superclass = Parent.prototype;
+}
+ArcadeMenu.UI.IVeiw = function(){}
+ArcadeMenu.UI.IVeiw.prototype.draw = function(){};
+
+ArcadeMenu.UI.ItemList = function(){
+    this.Font = new Paint();
+    this.Font.setARGB(255, 255, 255, 255);
+    this.Font.setTypeface(Game.UI.Typeface);
+    this.Font.setTextSize(20);
+    
+    this.__rect = new Rect();
+
+    this.Paint = new Paint();
+    this.Paint.setARGB(255, 255,0,0);
+};
+ArcadeMenu.UI.ItemList.__bitmap = new Bitmap.createBitmap(ArcadeUIBitmap, 28, 58, 3, 5);
+ArcadeMenu.UI.extends(ArcadeMenu.UI.ItemList);
+ArcadeMenu.UI.ItemList.prototype.toString = function(){
+    return "ItemList";
+}
+ArcadeMenu.UI.ItemList.prototype.Text = "ItemList";
+ArcadeMenu.UI.ItemList.prototype.Select = false;
+ArcadeMenu.UI.ItemList.prototype.X = 0;
+ArcadeMenu.UI.ItemList.prototype.Y = 0;
+ArcadeMenu.UI.ItemList.prototype.draw = function(canvas){
+    this.getRect();
+
+    if(this.Select)
+        canvas.drawBitmap(ArcadeMenu.UI.ItemList.__bitmap,
+            new Rect(0, 0, 3, 5),
+            new Rect(this.X, this.Y, this.X + this.__height * .6, this.Y + this.__height), this.Paint);
+    
+    canvas.drawText(this.Text, this.X + this.__height, this.Y + this.__height, this.Font); 
+}
+ArcadeMenu.UI.ItemList.prototype.getRect = function(){
+    this.Font.getTextBounds(this.Text, 0, this.Text.length, this.__rect);
+    this.__height = this.__rect.bottom - this.__rect.top;
+    return this.__rect;
+}
+
+Callback.addCallback("PostLoaded", function(){
+    Arcade.game = new ArcadeMenu();
 });
-
-var GramophoneDisksPrivate = {
-    disks:{},
-};
-
-var GramophoneDisks = {
-    registerDisk:function(id, file){
-        if(GramophoneDisksPrivate.hasOwnProperty(id))
-            throw new Error("Disk with id "+id+" was been registered");
-            
-        GramophoneDisksPrivate[id] = file;
-    },
-    isDisk:function(id){
-        return GramophoneDisksPrivate.hasOwnProperty(id);
-    },
-    getSource:function(id){
-        return GramophoneDisksPrivate[id];
-    }
-};
-
-ModAPI.registerAPI("RetroWaveGramophone", GramophoneDisks);
-
-GramophoneDisks.registerDisk(500, __dir__ + "sounds/disks/13.oga");
-GramophoneDisks.registerDisk(501, __dir__ + "sounds/disks/Cat.oga");
-GramophoneDisks.registerDisk(502, __dir__ + "sounds/disks/Blocks.oga");
-GramophoneDisks.registerDisk(503, __dir__ + "sounds/disks/Chirp.oga");
-GramophoneDisks.registerDisk(504, __dir__ + "sounds/disks/Far.oga");
-GramophoneDisks.registerDisk(505, __dir__ + "sounds/disks/Mall.oga");
-GramophoneDisks.registerDisk(506, __dir__ + "sounds/disks/Mellohi.oga");
-GramophoneDisks.registerDisk(507, __dir__ + "sounds/disks/Stal.oga");
-GramophoneDisks.registerDisk(508, __dir__ + "sounds/disks/Strad.oga");
-GramophoneDisks.registerDisk(509, __dir__ + "sounds/disks/Ward.oga");
-GramophoneDisks.registerDisk(510, __dir__ + "sounds/disks/11.oga");
-GramophoneDisks.registerDisk(511, __dir__ + "sounds/disks/Wait.oga");
-GramophoneDisks.registerDisk(759, __dir__ + "sounds/disks/Pigstep.ogg");
 
 
 
@@ -370,7 +397,7 @@ Arcade.window = (function(){
             });
             thisWindow.opened = true;
             new Thread(function(){
-                var canvas = null;
+                var canvas = null, error = false;
                 thisWindow.drawing = true;
                 let lastTime = System.currentTimeMillis();
                 while (thisWindow.opened) {
@@ -387,11 +414,15 @@ Arcade.window = (function(){
                     } catch(e){
                         canvas.drawColor(Color.BLUE);
                         e = e.toString();
-                        canvas.drawText(e, 0, e.length || e.length(), )
-                        alert(e);
+                        let rect = new Rect();
+                        errorPaint.getTextBounds(e, 0, e.length || e.length(), rect)
+                        canvas.drawText(e, 10, 10 + rect.bottom - rect.top, errorPaint)
+                        error = true;
                     }finally {
                         if (canvas != null)
                             surface.unlockCanvasAndPost(canvas);
+                        if(error)
+                            break;
                     }
                 }
                 thisWindow.drawing = false;
@@ -404,17 +435,16 @@ Arcade.window = (function(){
         
             thisWindow.opened = false;
             while(thisWindow.drawing){}
+            Arcade.game = new ArcadeMenu();
             runUI(function(){
                 popup.dismiss();
             });
         }
     };
-    let rootBitmap = new BitmapFactory.decodeFile(__dir__ + "gui/arcadeUI.png");
-    
 
     let rootLayout = new RelativeLayout(ctx);
     rootLayout.setBackgroundDrawable((function(){
-        let bitmap = new Bitmap.createBitmap(rootBitmap, 0, 0, 64, 58);
+        let bitmap = new Bitmap.createBitmap(ArcadeUIBitmap, 0, 0, 64, 58);
         bitmap = Bitmap.createScaledBitmap(bitmap, 64 * 8, 58 * 8, false);
         return createNinePatch(bitmap, [23 * 8, 24 * 8, 40 * 8, 41 * 8], [5 * 8, 37 * 8], [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]);
     })());
@@ -432,11 +462,11 @@ Arcade.window = (function(){
 
     let exitButton = new ImageView(ctx);
     let exitButtonDefaultBitmap = (function(){
-            let bitmap = new Bitmap.createBitmap(rootBitmap, 28, 63, 3, 3);
+            let bitmap = new Bitmap.createBitmap(ArcadeUIBitmap, 28, 63, 3, 3);
             return Bitmap.createScaledBitmap(bitmap, 3 * 15, 3 * 15, false);
         })(),
         exitButtonPressBitmap = (function(){
-            let bitmap = new Bitmap.createBitmap(rootBitmap, 28, 66, 3, 3);
+            let bitmap = new Bitmap.createBitmap(ArcadeUIBitmap, 28, 66, 3, 3);
             return Bitmap.createScaledBitmap(bitmap, 3 * 10, 3 * 10, false);
         })();
     exitButton.setImageBitmap(exitButtonDefaultBitmap);
@@ -458,11 +488,11 @@ Arcade.window = (function(){
 
     let buttonControlUp = new ImageView(ctx);
     let buttonControlUpDefaultBitmap = (function(){
-            let bitmap = new Bitmap.createBitmap(rootBitmap, 21, 58, 7, 7);
+            let bitmap = new Bitmap.createBitmap(ArcadeUIBitmap, 21, 58, 7, 7);
             return Bitmap.createScaledBitmap(bitmap, 7 * 8, 7 * 8, false);
         })(),
         buttonControlUpPressBitmap = (function(){
-            let bitmap = new Bitmap.createBitmap(rootBitmap, 21, 65, 7, 7);
+            let bitmap = new Bitmap.createBitmap(ArcadeUIBitmap, 21, 65, 7, 7);
             return Bitmap.createScaledBitmap(bitmap, 7 * 8, 7 * 8, false);
         })();
     buttonControlUp.setImageBitmap(buttonControlUpDefaultBitmap);
@@ -487,11 +517,11 @@ Arcade.window = (function(){
 
     let buttonControlDown = new ImageView(ctx);
     let buttonControlDownDefaultBitmap = (function(){
-        let bitmap = new Bitmap.createBitmap(rootBitmap, 14, 58, 7, 7);
+        let bitmap = new Bitmap.createBitmap(ArcadeUIBitmap, 14, 58, 7, 7);
         return Bitmap.createScaledBitmap(bitmap, 7 * 8, 7 * 8, false);
     })(),
     buttonControlDownPressBitmap = (function(){
-        let bitmap = new Bitmap.createBitmap(rootBitmap, 14, 65, 7, 7);
+        let bitmap = new Bitmap.createBitmap(ArcadeUIBitmap, 14, 65, 7, 7);
         return Bitmap.createScaledBitmap(bitmap, 7 * 8, 7 * 8, false);
     })();
 
@@ -517,11 +547,11 @@ Arcade.window = (function(){
 
     let buttonControlLeft = new ImageView(ctx);
     let buttonControlLeftDefaultBitmap = (function(){
-        let bitmap = new Bitmap.createBitmap(rootBitmap, 0, 58, 7, 7);
+        let bitmap = new Bitmap.createBitmap(ArcadeUIBitmap, 0, 58, 7, 7);
         return Bitmap.createScaledBitmap(bitmap, 7 * 8, 7 * 8, false);
     })(),
     buttonControlLeftPressBitmap = (function(){
-        let bitmap = new Bitmap.createBitmap(rootBitmap, 0, 65, 7, 7);
+        let bitmap = new Bitmap.createBitmap(ArcadeUIBitmap, 0, 65, 7, 7);
         return Bitmap.createScaledBitmap(bitmap, 7 * 8, 7 * 8, false);
     })();
 
@@ -546,11 +576,11 @@ Arcade.window = (function(){
 
     let buttonControlRight = new ImageView(ctx);
     let buttonControlRightDefaultBitmap = (function(){
-        let bitmap = new Bitmap.createBitmap(rootBitmap, 7, 58, 7, 7);
+        let bitmap = new Bitmap.createBitmap(ArcadeUIBitmap, 7, 58, 7, 7);
         return Bitmap.createScaledBitmap(bitmap, 7 * 8, 7 * 8, false);
     })(),
     buttonControlRightPressBitmap = (function(){
-        let bitmap = new Bitmap.createBitmap(rootBitmap, 7, 65, 7, 7);
+        let bitmap = new Bitmap.createBitmap(ArcadeUIBitmap, 7, 65, 7, 7);
         return Bitmap.createScaledBitmap(bitmap, 7 * 8, 7 * 8, false);
     })();
 
@@ -587,206 +617,6 @@ Callback.addCallback("ItemUse", function(c, i, b){
 
 
 
-// file: arcade/game.js
-
-var Game = function (){
-    this.elements = [];
-    this.gameSID = Object.keys(Game.__list);
-    this.__current = 0;
-
-    this.Next = function(){
-        if(this.__current == this.elements.length-1)
-            this.Select(0);
-        else
-            this.Select(this.__current+1);
-    }
-    this.Prev = function(){
-        if(this.__current == 0)
-            this.Select(this.elements.length-1);
-        else
-            this.Select(this.__current-1);
-    }
-    this.Select = function(i){
-        this.elements[this.__current].Select = false;
-        this.elements[this.__current = i].Select = true;
-    }
-
-    let size;
-    for(let i = 0, l = this.gameSID.length; i < l; i++){
-        let item = new Game.UI.ItemList();
-        item.Text = Game.__list[this.gameSID[i]].name;
-        if(!size){
-            item.getRect();
-            size = item.__height;
-        }
-        item.X = 10;
-        item.Y = 10 + (size + 10) * i;
-        if(i==0)
-            item.Select = true;
-
-        this.elements.push(item);
-    }
-
-    this.AddHandlerControl(Game.CONTROLS.UP, function () {
-        this.Prev();
-    });
-    this.AddHandlerControl(Game.CONTROLS.DOWN, function () {
-        this.Next();
-    });
-    this.AddHandlerControl(Game.CONTROLS.LEFT, function () {
-        ArcadeMenu.Start(Game.__list[this.gameSID[this.__current]]);
-    });
-    this.AddHandlerControl(Game.CONTROLS.RIGHT, function () {
-        ArcadeMenu.Start(Game.__list[this.gameSID[this.__current]]);
-    });
-};
-Game.prototype.AddHandlerControl = function (controls, event) {
-    if (!this.__controls)
-        this.__controls = [[], [], [], []];
-
-    this.__controls[controls].push(event.bind(this));
-}
-Game.prototype.invoke = function (control) {
-    if (this.__controls === null) return;
-    
-    let events = this.__controls[control];
-    for (let i in events) {
-        events[i]();
-    }
-}
-Game.prototype.sid = "arcade_menu";
-Game.prototype.toString = function(){
-    return "Game[" + this.name + "]";
-}
-Game.prototype.__controls = null;
-Game.prototype.tick = function(){};
-Game.prototype.draw = function (canvas) {
-    throw new Error("Hello bitch!");
-    
-    //Draw background
-    canvas.drawColor(android.graphics.Color.BLACK);
-
-    //Draw "No games"
-    if(this.elements.length == 0){
-        let bounds = new Rect();
-        let textToDraw = "Игр не найдено"
-        ArcadeMenu.MenuTextEmpty.getTextBounds(textToDraw, 0, textToDraw.length, bounds);
-        return canvas.drawText(textToDraw, canvas.getWidth()/2, (canvas.getHeight()+(bounds.bottom-bounds.top))/2, ArcadeMenu.MenuTextEmpty); 
-    }
-
-    for(let i in this.elements){
-        this.elements[i].draw(canvas);
-    }
-}
-Game.prototype.close = function(){
-    Arcade.game = Game.MenuGame;
-}
-Game.CONTROLS = {
-    UP: 0,
-    DOWN: 1,
-    LEFT: 2,
-    RIGHT: 3
-};
-Game.__list = {};
-Game.extends = function(_game){
-    var F = function(){};
-    F.prototype = Game.prototype;
-    _game.prototype = new F();
-    _game.prototype.constructor = _game;
-    _game.superclass = Game.prototype;
-}
-Game.registerGame = function (name, _game) {
-    if(Game.__list.hasOwnProperty(name))
-        throw new Error("Game \""+name+"\" was been register.");
-
-    _game.prototype.sid = name;
-    Game.__list[name] = new _game();
-}
-
-Game.UI = {};
-Game.UI.Typeface = android.graphics.Typeface.createFromFile(__dir__ + "gui/mc-typeface.ttf");
-Game.UI.extends = function (Child, Parent) {
-    if(Parent === undefined)
-        Parent = Game.UI.IVeiw;
-
-    var F = function(){};
-    F.prototype = Parent.prototype;
-    Child.prototype = new F();
-    Child.prototype.constructor = Child;
-
-    Child.superclass = Parent.prototype;
-}
-Game.UI.IVeiw = function(){}
-Game.UI.IVeiw.prototype.draw = function(){};
-
-Game.UI.ItemList = function(){
-    this.Font = new Paint();
-    this.Font.setARGB(255, 255, 255, 255);
-    this.Font.setTypeface(Game.UI.Typeface);
-    this.Font.setTextSize(20);
-    
-    this.__rect = new Rect();
-
-    this.Paint = new Paint();
-    this.Paint.setARGB(255, 255,0,0);
-};
-Game.UI.ItemList.__bitmap = (function(){
-    let bitmap = new BitmapFactory.decodeFile(__dir__ + "gui/arcadeUI.png");
-    return new Bitmap.createBitmap(bitmap, 28, 58, 3, 5);
-})();
-Game.UI.extends(Game.UI.ItemList);
-Game.UI.ItemList.prototype.toString = function(){
-    return "ItemList";
-}
-Game.UI.ItemList.prototype.Text = "ItemList";
-Game.UI.ItemList.prototype.Select = false;
-Game.UI.ItemList.prototype.X = 0;
-Game.UI.ItemList.prototype.Y = 0;
-Game.UI.ItemList.prototype.draw = function(canvas){
-    this.getRect();
-
-    if(this.Select)
-        canvas.drawBitmap(Game.UI.ItemList.__bitmap,
-            new Rect(0, 0, 3, 5),
-            new Rect(this.X, this.Y, this.X + this.__height * .6, this.Y + this.__height), this.Paint);
-    
-    canvas.drawText(this.Text, this.X + this.__height, this.Y + this.__height, this.Font); 
-}
-Game.UI.ItemList.prototype.getRect = function(){
-    this.Font.getTextBounds(this.Text, 0, this.Text.length, this.__rect);
-    this.__height = this.__rect.bottom - this.__rect.top;
-    return this.__rect;
-}
-
-var ArcadeMenu = {
-    MenuTextEmpty:(function(){
-        let paint = new Paint();
-        paint.setARGB(255, 255, 255, 255);
-        paint.setTextAlign(Paint.Align.CENTER);
-        paint.setTypeface(Game.UI.Typeface);
-        paint.setTextSize(50);
-        return paint;
-    })(),
-    Start:function(game){
-        if(!game instanceof Game)
-            throw new TypeError("Not Game.");
-        Arcade.game = game;
-    }
-};
-
-Callback.addCallback("PostLoaded", function(){
-    Game.MenuGame = new Game();
-    Arcade.game = Game.MenuGame;
-});
-
-ModAPI.registerAPI("RetroWaveGame", {
-    extends:Game.extends,
-    registerGame:Game.registerGame
-})
-
-
-
-
 // file: games/tetris.js
 
 var Tetris = function(){
@@ -810,7 +640,10 @@ var Tetris = function(){
             this.Element.TryRight();
     });
 }; Game.extends(Tetris);
+
 Tetris.prototype.name = "Тетрис";
+Tetris.Arcade = true;
+
 Tetris.prototype.score = 0;
 Tetris.paints = [];
 (function(colors){
@@ -859,7 +692,7 @@ Tetris.prototype.EndFontPaint = (function(){
 })();
 Tetris.prototype.time = 0;
 Tetris.prototype.end = false;
-Tetris.prototype.__end = false;
+
 Tetris.prototype.tick = function(delta){
     this.time += delta;
     
@@ -1073,50 +906,6 @@ Game.registerGame("tetris", Tetris);
 
 
 
-// file: dendy/dendy.js
-
-IDRegistry.genBlockID("dendy");
-Block.createBlockWithRotateAndModel("dendy", "Dendy", "dendy", "dendy", { x:0, z:0 });
-
-IDRegistry.genBlockID("dendy_green");
-Block.createBlockWithRotateAndModel("dendy_green", "Dendy", "dendy_0", "dendy", { x:0, z:0 });
-
-IDRegistry.genBlockID("dendy_yellow");
-Block.createBlockWithRotateAndModel("dendy_yellow", "Dendy", "dendy_1", "dendy", { x:0, z:0 });
-Callback.addCallback("ItemUse", function(coords, item, block){
-    switch(block.id){
-        case BlockID.dendy_green:
-            World.drop(coords.x, coords.y+1, coords.z, ItemID.cartridge_green, 1);
-            World.setBlock(coords.x, coords.y, coords.z, BlockID.dendy, block.data);
-        break;
-        case BlockID.dendy_yellow:
-            World.drop(coords.x, coords.y+1, coords.z, ItemID.cartridge_yellow, 1);
-            World.setBlock(coords.x, coords.y, coords.z, BlockID.dendy, block.data);
-        break;
-    }
-});
-
-IDRegistry.genItemID("cartridge_green");
-Item.createItem("cartridge_green", "Cartridge", {name:"cartridge", data:0}, {stack: 1 });
-Item.registerUseFunction("cartridge_green", function(coords, item, block){
-    if(block.id == BlockID.dendy){
-        Player.setCarriedItem(0,0,0);
-        World.setBlock(coords.x, coords.y, coords.z, BlockID.dendy_green, block.data);
-    }
-});
-
-IDRegistry.genItemID("cartridge_yellow");
-Item.createItem("cartridge_yellow", "Cartridge", {name:"cartridge", data:1}, {stack: 1 });
-Item.registerUseFunction("cartridge_yellow", function(coords, item, block){
-    if(block.id == BlockID.dendy){
-        Player.setCarriedItem(0,0,0);
-        World.setBlock(coords.x, coords.y, coords.z, BlockID.dendy_yellow, block.data);
-    }
-});
-
-
-
-
 // file: cooler/cooler.js
 
 IDRegistry.genBlockID("cooler");
@@ -1131,7 +920,14 @@ Block.createBlockWithRotateAndModel("cooler", "Refrigerator", "cooler", "cooler"
 })()
 
 TileEntity.registerPrototype(BlockID.cooler, {
-    getGuiScreen:function(){
+    useNetworkItemContainer:true,
+    getScreenName:function(){
+        return "cooler";
+    },
+    getScreenByName:function(){
+        var header = CoolerInterface.getWindow("header");
+        header.contentProvider.drawing[2].text = Translation.translate("Refrigerator");
+        
         return CoolerInterface;
     }
 })
@@ -1174,7 +970,7 @@ var CoolerInterface = (function(){
         standart:{
             header: {
                 text: {
-                    text: "Холодос",
+                    text: "Refrigerator",
                 },
                 height: 80,
             },
@@ -1187,6 +983,11 @@ var CoolerInterface = (function(){
         elements:elements
     });
 })()
+
+
+Translation.addTranslation("Refrigerator", {
+    "ru":"Холодильник"
+});
 
 
 
@@ -1202,50 +1003,74 @@ Block.createBlockWithRotateAndModel("tvbox", "TV", "tv", "tv", { x:0, z:0 }, "ir
 // file: tardis/tardis.js
 
 IDRegistry.genBlockID("tardis");
-Block.createBlockWithRotateAndModel("tardis", "Tardis", "tardis", "tardis", { x:0, z:0 });
+Block.createBlockWithRotateAndModel("tardis", "Tardis", "tardis", "tardis", { x:0, z:0 }, "tardis", false);
+Block.setBlockMaterial("tardis", "unbreaking");
 
 (function(){
     let CollisionShape = new ICRender.CollisionShape();
     let Entry = CollisionShape.addEntry();
     Entry.addBox(0,0,0,1,2,1);
 
-    BlockRenderer.setCustomCollisionShape(BlockID.cooler, -1, CollisionShape);
+    BlockRenderer.setCustomCollisionShape(BlockID.tardis, -1, CollisionShape);
 })()
 
 var Tardis = {
     spawned: false,
     player:new Sound("tardis.wav"),
     __pos:{},
+    __blockSource:null,
+    __getBlockSource:function(){
+        if(Tardis.__blockSource == null)
+            Tardis.__blockSource = BlockSource.getDefaultForDimension(Native.Dimension.NORMAL);
+    },
     spawn:function(){
         Tardis.__pos = Player.getPosition();
         Tardis.__pos.x += Utils.random(-16, 17);
         Tardis.__pos.z += Utils.random(-16, 17);
         Tardis.__pos = GenerationUtils.findHighSurface(Tardis.__pos.x, Tardis.__pos.z);
-        
-        World.setBlock(Tardis.__pos.x, Tardis.__pos.y, Tardis.__pos.z, BlockID.tardis);
-        Tardis.player.setInBlock(Tardis.__pos.x, Tardis.__pos.y, Tardis.__pos.z, 16);
-        Tardis.player.play();
+        Tardis.__pos.y++;
 
-        Debug.message([Tardis.__pos.x, Tardis.__pos.y, Tardis.__pos.z]);
+        Tardis.__getBlockSource.setBlock(Tardis.__pos.x, Tardis.__pos.y, Tardis.__pos.z, BlockID.tardis);
+        Network.sendToAllClients("retrowave.tardis.spawn", { position: Tardis.__pos });
 
         Tardis.spawned = true;
     },
     despawn:function(){
-        World.setBlock(Tardis.__pos.x, Tardis.__pos.y, Tardis.__pos.z, 0);
+        Tardis.__getBlockSource.setBlock(Tardis.__pos.x, Tardis.__pos.y, Tardis.__pos.z, 0);
+        Network.sendToAllClients("retrowave.tardis.despawn", {});
         Tardis.spawned = false;
     },
     tick:function(){
+        let worldTime = World.getWorldTime();
+        let dayTime = worldTime % 24000;
+        
+        if(DEBUG)
+            ICGame.tipMessage("Time: " + worldTime + "(" + dayTime + ") ");
+
         if(Tardis.spawned){
-            if(World.getWorldTime() % 24000 >= 23000){
+            if(dayTime >= 23000){
                 Tardis.despawn();
             }
-        }else if(World.getWorldTime() % 24000 >= 17000 && World.getWorldTime() % 24000 < 20000){
+        }else if(dayTime >= 17000 && dayTime < 20000){
             if(Utils.random(0, 1000) <= 1 || true){
                 Tardis.spawn();
             }
         }
     }
 };
+
+
+Network.addClientPacket("retrowave.tardis.spawn", function(packetData) {
+    if(DEBUG)
+            Debug.message([packetData.position.x, packetData.position.y, packetData.position.z]);
+
+    Tardis.player.setInBlock(packetData.position.x, packetData.position.y, packetData.position.z, 16);
+    Tardis.player.play();
+});
+Network.addClientPacket("retrowave.tardis.despawn", function(packetData) {
+    Tardis.player.play();
+});
+    
 
 Saver.addSavesScope("RW_Tardis",
     function read(scope){
@@ -1262,6 +1087,8 @@ Saver.addSavesScope("RW_Tardis",
         };
     }
 );
+
+Callback.addCallback("tick", Tardis.tick);
 
 
 

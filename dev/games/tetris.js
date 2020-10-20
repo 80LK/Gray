@@ -205,7 +205,6 @@ Tetris.prototype.draw = function(canvas){
 Tetris.prototype.initDefaultValue = function(){
     this.rect = null;
     this.score = 0;
-    this.__end = false;
     this.end = false;
     this.time = 0;
 
@@ -217,12 +216,14 @@ Tetris.prototype.initDefaultValue = function(){
             this.field[y].push(null);
     }
 
+    this.__soundPlayer = new Sound("tetris.wav");
+    this.__soundPlayer.play();
+    this.__soundPlayer.setLooping(true);
     this.GenerateNextElement();
     this.UpdateElement();   
 }
 Tetris.prototype.close = function(){
-    this.initDefaultValue();
-    Tetris.superclass.close.apply(this);
+    //this.__soundPlayer.stop();
 }
 //Element
 Tetris.Element = function(form){

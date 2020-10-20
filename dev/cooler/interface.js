@@ -31,7 +31,7 @@ var CoolerInterface = (function(){
         standart:{
             header: {
                 text: {
-                    text: "Холодос",
+                    text: "Refrigerator",
                 },
                 height: 80,
             },
@@ -44,3 +44,8 @@ var CoolerInterface = (function(){
         elements:elements
     });
 })()
+
+
+Translation.addTranslation("Refrigerator", {
+    "ru":"Холодильник"
+});

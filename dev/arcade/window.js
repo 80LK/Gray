@@ -40,6 +40,8 @@ Arcade.window = (function(){
 
                         Arcade.game.draw(canvas);
                     } catch(e){
+                        Arcade.game.close();
+                        
                         canvas.drawColor(Color.BLUE);
                         e = e.toString();
                         let rect = new Rect();
@@ -63,6 +65,7 @@ Arcade.window = (function(){
         
             thisWindow.opened = false;
             while(thisWindow.drawing){}
+            Arcade.game.close();
             Arcade.game = new ArcadeMenu();
             runUI(function(){
                 popup.dismiss();
@@ -82,7 +85,6 @@ Arcade.window = (function(){
     surfaceParams.setMargins(128, 40, 128, 168);
     runUI(function(){
         surface = new android.view.TextureView(ctx);
-        surface.setOnClickListener(function(){alert("Click!")})
         rootLayout.addView(surface, surfaceParams);
     });
 

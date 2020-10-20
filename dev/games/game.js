@@ -20,6 +20,8 @@ Game.prototype.toString = function(){
 Game.prototype.__controls = null;
 Game.prototype.tick = function(){};
 Game.prototype.draw = function (canvas){}
+Game.prototype.close = function(){};
+
 Game.CONTROLS = {
     UP: 0,
     DOWN: 1,

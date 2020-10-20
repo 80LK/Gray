@@ -1,3 +1,5 @@
+//https://developer.android.com/reference/java/net/HttpURLConnection
+
 var RequestAPI = {
     __parseBufferInString:function(input){
         let contents = JavaArray.newInstance(java.lang.Byte.TYPE, 1024);

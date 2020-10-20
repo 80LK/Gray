@@ -1,48 +1,63 @@
 IDRegistry.genBlockID("radio");
 Block.createBlockWithRotateAndModel("radio", "Radio", "radio", "radio", { x:.5, z:.5 }, "planks");
 
-TileEntity.registerPrototype(BlockID.radio, {
-    defaultValue:{
-        playing:false
-    },
+Sound.registerTileEntity(BlockID.radio, {
     init:function(){
-        this.soundPlayer = new Sound();
-        this.soundPlayer.setInBlock(this.x, this.y, this.z, 5);
-        this.soundPlayer.setOnCompletion((function(){
-            if(this.data.playing){
-                this.soundPlayer.setSource(RadioFiles[Utils.random(0, RadioFiles.length)]);
-                this.soundPlayer.play();
-            }
-        }).bind(this))
+        this.SetSource(__RadioAPI.getFile());
+    },
+    OnCompletion:function(){
+        this.SetSource(__RadioAPI.getFile());
+        if(this.isPlaying())
+            this.Play();
+    },
+    isPlaying:function(){
+        return this.networkData.getBoolean("playing", false);
     },
     click:function(){
-        if(this.data.playing){
-            this.soundPlayer.stop();
-            this.data.playing = false;
+        let playing = this.isPlaying();
+        
+        this.networkData.putBoolean("playing", !playing);
+        this.networkData.sendChanges();
+        
+        if(playing){
+            this.Stop(true);
         }else{
-            this.soundPlayer.setSource(RadioFiles[Utils.random(0, RadioFiles.length)]);
-            this.soundPlayer.play();
-
-            this.data.playing = true;
+            this.Play();
         }
     }
 });
 
-var RadioFiles = (function(){
-    let ret = [];
-    let files = FileTools.GetListOfFiles(__dir__ + "sounds/radio/");
-
-    for(let i in files)
-        ret.push(__dir__+"sounds/radio/" + files[i].getName());
-
-    return ret;
-})();
-
-ModAPI.registerAPI("RetroWaveRadio", {
+var __RadioAPI = {
+    mod:"NoNameAddon",
+    files:[],
+    length:0,
+    addFile:function(sid, path){
+        this.files.push(Sound.registerNetworkFile("RetroWave_Radio_" + sid, path));
+        this.length++;
+    },
+    init:function(){
+        let path = __dir__ + "sounds/radio/";
+        let files = FileTools.GetListOfFiles(path);
+        for(let i in files)
+        this.addFile(files[i].getName(), path + files[i].getName());
+    },
+    getFile:function(){
+        let i;
+        do{ i = Utils.random(0, this.length); }while(i == this.index);
+        this.index = i;
+        return this.files[this.index];
+    }
+};
+var RadioAPI = {
+    init:function(name_mod){
+        __RadioAPI.mod = name_mod;
+    },
     addFile:function(path){
-        RadioFiles.push(path);
+        __RadioAPI.addFile(__RadioAPI.mod + "_" + (new java.io.File(path)).getName(), path);
     },
     addFiles:function(paths){
-        RadioFiles = RadioFiles.concat(paths);
+        paths.map(this.addFile);
     }
-})
+}
+ModAPI.registerAPI("RetroWaveRadio", RadioAPI);
+__RadioAPI.init();

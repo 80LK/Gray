@@ -8,7 +8,12 @@
                          by WolfTeam & Diskrizy
 */
 
-Block.createBlockWithRotateAndModel = function(sid, name, model, texture, offset, blockTexture){
+const DEBUG = (function(){
+   var config = FileTools.ReadJSON(__packdir__ + "/innercore/config.json") || {};
+   return config["developer_mode"] === true;
+})();
+
+Block.createBlockWithRotateAndModel = function(sid, name, model, texture, offset, blockTexture, inCreative){
     if(typeof texture == "string")
         texture = {name:texture};
     
@@ -20,10 +25,13 @@ Block.createBlockWithRotateAndModel = function(sid, name, model, texture, offset
 
    if(!offset) offset = {};
 
+   if(inCreative === undefined)
+      inCreative = true;
+
    Block.createBlockWithRotation(sid, [{
       name:name,
       texture: [[blockTexture, 0]],
-      inCreative:true
+      inCreative:inCreative
    }]);
 
 

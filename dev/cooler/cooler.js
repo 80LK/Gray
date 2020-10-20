@@ -10,7 +10,14 @@ Block.createBlockWithRotateAndModel("cooler", "Refrigerator", "cooler", "cooler"
 })()
 
 TileEntity.registerPrototype(BlockID.cooler, {
-    getGuiScreen:function(){
+    useNetworkItemContainer:true,
+    getScreenName:function(){
+        return "cooler";
+    },
+    getScreenByName:function(){
+        var header = CoolerInterface.getWindow("header");
+        header.contentProvider.drawing[2].text = Translation.translate("Refrigerator");
+        
         return CoolerInterface;
     }
 })
