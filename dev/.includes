@@ -3,9 +3,12 @@ header.js
 utils.js
 Textures.js
 
+radio/API.js
 radio/radio.js
 
-#gramophone/block.js
+gramophone/block.js
+gramophone/API.js
+gramophone/mainDisks.js
 
 games/game.js
 games/window.js

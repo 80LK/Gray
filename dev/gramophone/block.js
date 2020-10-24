@@ -1,13 +1,129 @@
 IDRegistry.genBlockID("gramophone");
 Block.createBlockWithRotateAndModel("gramophone", "Gramophone", "gramophone", "gramophone", { x:0, z:0 }, "iron_block");
+
 var gramophoneOffset = [
     [19/32, 19/32],
     [13/32, 13/32],
     [19/32, 13/32],
     [13/32, 19/32]
 ];
-TileEntity.registerPrototype(BlockID.gramophone, {
-    defaultData:{
+Sound.registerTileEntity(BlockID.gramophone, {
+    defaultValues:{
+        disk:null
+    },
+    insertDisk:function(id){
+        this.data.disk = id;
+        this.sendPacket("insert", {disk:id});
+    },
+    extractDisk:function(){
+        if(this.data.disk != null){
+            this.blockSource.spawnDroppedItem(this.x, this.y+1, this.z, this.data.disk, 1, 0, null);
+            this.data.disk = null;
+            this.Stop();
+            this.sendPacket("extract");
+            ICGame.prevent();
+        }
+    },
+
+    init:function(){
+        this.tile = this.blockSource.getBlock(this.x, this.y, this.z);
+        alert(this.tile.data);
+    },
+    click:function(id, count, data, coords, client){
+        if(Entity.getSneaking(client)){
+            this.extractDisk();
+            return;
+        }
+        if(GramophoneDisks.isDisk(id)){
+            alert(id);
+            if(this.data.disk)
+                this.extractDisk();
+
+            this.insertDisk(id);
+            Entity.setCarriedItem(client, 0,0,0);
+            return;
+        }
+
+        if(this.IsPlaying())
+            this.Pause();
+        else
+            this.Play();
+    },
+    destroyBlock:function(){
+        this.extractDisk();
+    },
+
+    events:{
+        init:function(){
+            this.sendResponse("init", {
+                disk:this.data.disk,
+                data:this.tile.data
+            });
+        }
+    },
+
+    client:{
+        insertDisk:function(id){
+            if(!id) return;
+            
+            id = Network.serverToLocalId(id);
+            
+            this.__soundPlayer.setSource(GramophoneDisks.getSource(id));
+            
+            let render = new Render();
+            let part = render.getPart("body");
+            part.addBox(-1,0,-1,2,1,2);
+            // this.animate.describe({
+            //     render: render.getRenderType(),
+            //     material:"entity_alphatest_custom",
+            //     scale:2
+            // });
+            this.animate.describeItem({
+                id:  id,
+                count: 1,
+                data: 0,
+                size: 1,
+                rotation: [Math.PI/2, 0, 0],
+                material:"entity_alphatest_custom",
+                notRandomize: true
+            });
+
+            this.animate.loadCustom((function(){
+                let transform = this.animate.transform();
+
+                if(transform && this.__soundPlayer.isPlaying())
+                    transform.rotate(0, 0, Math.PI/40);
+            }).bind(this));
+        },
+        extractDisk:function(){
+            this.animate.destroy();
+        },
+
+        load:function(){
+            this.animate = new Animation.Item(this.x, this.y, this.z);
+            this.sendPacket("init");
+        },
+
+        events:{
+            init:function(data){
+                this.insertDisk(data.disk);
+                this.offsetDisk = gramophoneOffset[data.data];
+                this.animate.setPos(this.x + this.offsetDisk[0], this.y + (3.5 / 16), this.z + this.offsetDisk[1]);
+            },
+            insert:function(data){
+                alert(data.disk)
+                this.insertDisk(data.disk);
+            },
+            extract:function(){
+                this.extractDisk();
+            }
+        }
+    }
+});
+
+TileEntity.registerPrototype2 = function(){};
+TileEntity.registerPrototype2(BlockID.gramophone, {
+    defaultValues:{
         disk:null,
         playing:false
     },
@@ -34,7 +150,7 @@ TileEntity.registerPrototype(BlockID.gramophone, {
     },
     __insertDisk:function(id){
         this.data.disk = id;
-        this.player.setSource(GramophoneDisks.getSource(this.data.disk));
+        
         this.player.setSource(GramophoneDisks.getSource(id));
         this.data.rotate = 0;
         this.animate.describeItem({
@@ -92,38 +208,3 @@ TileEntity.registerPrototype(BlockID.gramophone, {
         this.__extraxtDisk();
     }
 });
-
-var GramophoneDisksPrivate = {
-    disks:{},
-};
-
-var GramophoneDisks = {
-    registerDisk:function(id, file){
-        if(GramophoneDisksPrivate.hasOwnProperty(id))
-            throw new Error("Disk with id "+id+" was been registered");
-            
-        GramophoneDisksPrivate[id] = file;
-    },
-    isDisk:function(id){
-        return GramophoneDisksPrivate.hasOwnProperty(id);
-    },
-    getSource:function(id){
-        return GramophoneDisksPrivate[id];
-    }
-};
-
-ModAPI.registerAPI("RetroWaveGramophone", GramophoneDisks);
-
-GramophoneDisks.registerDisk(500, __dir__ + "sounds/disks/13.oga");
-GramophoneDisks.registerDisk(501, __dir__ + "sounds/disks/Cat.oga");
-GramophoneDisks.registerDisk(502, __dir__ + "sounds/disks/Blocks.oga");
-GramophoneDisks.registerDisk(503, __dir__ + "sounds/disks/Chirp.oga");
-GramophoneDisks.registerDisk(504, __dir__ + "sounds/disks/Far.oga");
-GramophoneDisks.registerDisk(505, __dir__ + "sounds/disks/Mall.oga");
-GramophoneDisks.registerDisk(506, __dir__ + "sounds/disks/Mellohi.oga");
-GramophoneDisks.registerDisk(507, __dir__ + "sounds/disks/Stal.oga");
-GramophoneDisks.registerDisk(508, __dir__ + "sounds/disks/Strad.oga");
-GramophoneDisks.registerDisk(509, __dir__ + "sounds/disks/Ward.oga");
-GramophoneDisks.registerDisk(510, __dir__ + "sounds/disks/11.oga");
-GramophoneDisks.registerDisk(511, __dir__ + "sounds/disks/Wait.oga");
-GramophoneDisks.registerDisk(759, __dir__ + "sounds/disks/Pigstep.ogg");
