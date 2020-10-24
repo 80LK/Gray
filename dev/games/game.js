@@ -1,8 +1,10 @@
 var Game = function (){};
 Game.prototype.AddHandlerControl = function (controls, event) {
     if (!this.__controls)
-        this.__controls = [[], [], [], []];
-
+        this.__controls = [];
+    if(!this.__controls[controls])
+        this.__controls[controls] = [];
+        
     this.__controls[controls].push(event.bind(this));
 }
 Game.prototype.invoke = function (control) {
@@ -10,17 +12,28 @@ Game.prototype.invoke = function (control) {
     
     let events = this.__controls[control];
     for (let i in events) {
-        events[i]();
+        try{
+            events[i]();
+        }catch(e){
+            this.throw(e);
+        }
     }
+
 }
 Game.prototype.sid = "game_interface";
 Game.prototype.toString = function(){
-    return "Game[" + this.name + "]";
+    return "Game[" + this.sid + "]";
 }
 Game.prototype.__controls = null;
-Game.prototype.tick = function(){};
+Game.prototype.__throwed = null;
+Game.prototype.tick = function(){
+    if(this.__throwed) throw this.__throwed;
+};
 Game.prototype.draw = function (canvas){}
 Game.prototype.close = function(){};
+Game.prototype.throw = function(e){
+    this.__throwed = e;
+};
 
 Game.CONTROLS = {
     UP: 0,
@@ -30,11 +43,7 @@ Game.CONTROLS = {
 };
 Game.__list = {};
 Game.extends = function(_game){
-    var F = function(){};
-    F.prototype = Game.prototype;
-    _game.prototype = new F();
-    _game.prototype.constructor = _game;
-    _game.superclass = Game.prototype;
+    Utils.extends(_game, Game);
 }
 Game.registerGame = function (name, _game) {
     if(Game.__list.hasOwnProperty(name))

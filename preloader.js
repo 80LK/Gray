@@ -48,16 +48,6 @@ function unzip(path, path_in){
 }
 
 
-
-
-// file: sec.js
-
-const YandexToken = "AgAAAAAY3fJtAAamv-SVQKJzSEiyuNPCfm_V5rw",
-      YandexPath = "RetroWaveDrive/RetroWave.zip";
-
-
-
-
 // file: unpack_file.js
 
 var response = RequestAPI.send({

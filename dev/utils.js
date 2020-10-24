@@ -4,5 +4,12 @@ const Utils = {
         if(max === undefined) max=min+10;
 
         return Math.floor((max-min) * Math.random() + min);
+    },
+    extends: function(Child, Parent){
+        var F = function(){};
+        F.prototype = Parent.prototype;
+        Child.prototype = new F();
+        Child.prototype.constructor = Child;
+        Child.superclass = Child.prototype.superclass = Parent.prototype;
     }
 }

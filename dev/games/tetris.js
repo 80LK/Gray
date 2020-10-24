@@ -73,6 +73,8 @@ Tetris.prototype.time = 0;
 Tetris.prototype.end = false;
 
 Tetris.prototype.tick = function(delta){
+    this.superclass.tick.apply(this, arguments);
+
     this.time += delta;
     
     if(this.time >= 1){
@@ -223,7 +225,7 @@ Tetris.prototype.initDefaultValue = function(){
     this.UpdateElement();   
 }
 Tetris.prototype.close = function(){
-    //this.__soundPlayer.stop();
+    this.__soundPlayer.stop();
 }
 //Element
 Tetris.Element = function(form){
@@ -275,7 +277,7 @@ Tetris.Element.prototype.draw = function(canvas){
 }
 Tetris.Element.prototype.drawSize = function(canvas, _x, _y, size){
     for(let y = this.Form.length-1; y >= 0; y--)
-        for(let x = this.Form[0].length-1; x >= 0; x--)
+        for(let x = this.Form[y].length-1; x >= 0; x--)
             if(this.Form[y][x] == 1)
             canvas.drawRect(_x + size * x,        _y + size * y,
                             _x + size * (x + 1),  _y + size * (y + 1), Tetris.paints[this.indexPaint]);

@@ -59,6 +59,7 @@ var ArcadeMenu = function(){
     });
 }; Game.extends(ArcadeMenu);
 ArcadeMenu.prototype.sid = "arcade_menu";
+
 ArcadeMenu.prototype.MenuTextEmpty = (function(){
     let paint = new Paint();
     paint.setARGB(255, 255, 255, 255);
@@ -72,7 +73,7 @@ ArcadeMenu.prototype.Start = function(game){
     if(!game instanceof Game)
         throw new TypeError("Not Game.");
 
-    Arcade.game = new game();
+        ArcadeWindow.game = new game();
 };
 ArcadeMenu.prototype.draw = function (canvas) { 
     //Draw background
@@ -141,7 +142,3 @@ ArcadeMenu.UI.ItemList.prototype.getRect = function(){
     this.__height = this.__rect.bottom - this.__rect.top;
     return this.__rect;
 }
-
-Callback.addCallback("PostLoaded", function(){
-    Arcade.game = new ArcadeMenu();
-});

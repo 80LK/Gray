@@ -1,13 +1,13 @@
 /*
 BUILD INFO:
-  dir: dev
+  dir: dev/
   target: mod.js
-  files: 12
+  files: 15
 */
 
 
 
-// file: header.js
+// header.js
 
 /*
    ____                        
@@ -131,7 +131,7 @@ IMPORT("SoundAPI");
 
 
 
-// file: utils.js
+// utils.js
 
 const Utils = {
     random:function(min, max){
@@ -139,19 +139,195 @@ const Utils = {
         if(max === undefined) max=min+10;
 
         return Math.floor((max-min) * Math.random() + min);
+    },
+    extends: function(Child, Parent){
+        var F = function(){};
+        F.prototype = Parent.prototype;
+        Child.prototype = new F();
+        Child.prototype.constructor = Child;
+        Child.superclass = Child.prototype.superclass = Parent.prototype;
     }
 }
 
 
 
 
-// file: games/game.js
+// Textures.js
+
+var Textures = {
+    __bitmaps:{},
+    getBitmap:function(dir){
+        if(!this.__bitmaps.hasOwnProperty(dir))
+            this.__bitmaps[dir] = new BitmapFactory.decodeFile(dir);
+
+        return this.__bitmaps[dir];
+    },
+    parseJSON:function(json){
+        return this.parseObj(JSON.parse(json));
+    },
+    parseObj:function(obj){
+        let bitmap = this.getBitmap(obj.file);
+        bitmap = new Bitmap.createBitmap(bitmap, obj.bitmap.x, obj.bitmap.y, obj.bitmap.width, obj.bitmap.height);
+        bitmap = Bitmap.createScaledBitmap(bitmap, obj.bitmap.width * obj.scale, obj.bitmap.height * obj.scale, false);
+        if(obj.ninePatch)
+            return this.createNinePatch(bitmap, obj.ninePatch.x.map(function(i){return i*obj.scale}),
+                                    obj.ninePatch.y.map(function(i){return i*obj.scale}));
+        
+        return bitmap;
+    },
+
+    setStateImageButton(view, normal, pressed){
+        view.setOnTouchListener(function(b, c){
+            var f = c.getActionMasked();
+            if (f == MotionEvent.ACTION_DOWN) {
+                b.setImageBitmap(pressed);
+            }
+            if (f == MotionEvent.ACTION_CANCEL || f == MotionEvent.ACTION_UP) {
+                b.setImageBitmap(normal);
+            }
+            return false;
+        })
+    },
+    createNinePatch:function(bitmap, x, y, c){
+        let xL = x.length, yL = y.length, cL = (xL+1) * (yL+1);
+        if(c == undefined){
+            c = [];
+            for(let i = 0; i < cL; i++)
+                c.push(1);
+        }
+        
+        if(c.length != cL)
+            throw new RangeError();
+
+        var a = java.nio.ByteBuffer.allocate(32 + (xL+yL+cL) * 4).order(java.nio.ByteOrder.nativeOrder());
+        a.put(1);
+        a.put(xL);
+        a.put(yL);
+        a.put(cL);
+        a.putInt(0);
+        a.putInt(0);
+        a.putInt(0);
+        a.putInt(0);
+        a.putInt(0);
+        a.putInt(0);
+        a.putInt(0);
+     
+        for(let i = 0; i < xL; i++)
+           a.putInt(x[i]);
+        for(let i = 0; i < yL; i++)
+           a.putInt(y[i]);
+        for(let i = 0; i < cL; i++)
+           a.putInt(c[i]);
+        
+        return new NinePatchDrawable(ctx.getResources(), bitmap, a.array(), new Rect(), "")
+
+    }
+}
+
+/*
+{
+    file:__dir__ + "gui/arcadeUI.png",
+    bitmap:{
+        x:0,
+        y:0,
+        width:64,
+        height:58
+    },
+    ninePatch:{
+        x:[23, 24, 40, 41],
+        y:[5, 37]
+    },
+    scale:8
+}
+
+
+let bitmap = new Bitmap.createBitmap(ArcadeUIBitmap, 0, 0, 64, 58);
+    bitmap = Bitmap.createScaledBitmap(bitmap, 64 * 8, 58 * 8, false);
+    return 
+
+*/
+
+
+
+
+// radio/radio.js
+
+IDRegistry.genBlockID("radio");
+Block.createBlockWithRotateAndModel("radio", "Radio", "radio", "radio", { x:.5, z:.5 }, "planks");
+
+Sound.registerTileEntity(BlockID.radio, {
+    init:function(){
+        this.SetSource(__RadioAPI.getFile());
+    },
+    OnCompletion:function(){
+        this.SetSource(__RadioAPI.getFile());
+        if(this.isPlaying())
+            this.Play();
+    },
+    isPlaying:function(){
+        return this.networkData.getBoolean("playing", false);
+    },
+    click:function(){
+        let playing = this.isPlaying();
+        
+        this.networkData.putBoolean("playing", !playing);
+        this.networkData.sendChanges();
+        
+        if(playing){
+            this.Stop(true);
+        }else{
+            this.Play();
+        }
+    }
+});
+
+var __RadioAPI = {
+    mod:"NoNameAddon",
+    files:[],
+    length:0,
+    addFile:function(sid, path){
+        this.files.push(Sound.registerNetworkFile("RetroWave_Radio_" + sid, path));
+        this.length++;
+    },
+    init:function(){
+        let path = __dir__ + "sounds/radio/";
+        let files = FileTools.GetListOfFiles(path);
+        for(let i in files)
+        this.addFile(files[i].getName(), path + files[i].getName());
+    },
+    getFile:function(){
+        let i;
+        do{ i = Utils.random(0, this.length); }while(i == this.index);
+        this.index = i;
+        return this.files[this.index];
+    }
+};
+var RadioAPI = {
+    init:function(name_mod){
+        __RadioAPI.mod = name_mod;
+    },
+    addFile:function(path){
+        __RadioAPI.addFile(__RadioAPI.mod + "_" + (new java.io.File(path)).getName(), path);
+    },
+    addFiles:function(paths){
+        paths.map(this.addFile);
+    }
+}
+ModAPI.registerAPI("RetroWaveRadio", RadioAPI);
+__RadioAPI.init();
+
+
+
+
+// games/game.js
 
 var Game = function (){};
 Game.prototype.AddHandlerControl = function (controls, event) {
     if (!this.__controls)
-        this.__controls = [[], [], [], []];
-
+        this.__controls = [];
+    if(!this.__controls[controls])
+        this.__controls[controls] = [];
+        
     this.__controls[controls].push(event.bind(this));
 }
 Game.prototype.invoke = function (control) {
@@ -159,16 +335,29 @@ Game.prototype.invoke = function (control) {
     
     let events = this.__controls[control];
     for (let i in events) {
-        events[i]();
+        try{
+            events[i]();
+        }catch(e){
+            this.throw(e);
+        }
     }
+
 }
 Game.prototype.sid = "game_interface";
 Game.prototype.toString = function(){
-    return "Game[" + this.name + "]";
+    return "Game[" + this.sid + "]";
 }
 Game.prototype.__controls = null;
-Game.prototype.tick = function(){};
+Game.prototype.__throwed = null;
+Game.prototype.tick = function(){
+    if(this.__throwed) throw this.__throwed;
+};
 Game.prototype.draw = function (canvas){}
+Game.prototype.close = function(){};
+Game.prototype.throw = function(e){
+    this.__throwed = e;
+};
+
 Game.CONTROLS = {
     UP: 0,
     DOWN: 1,
@@ -177,11 +366,7 @@ Game.CONTROLS = {
 };
 Game.__list = {};
 Game.extends = function(_game){
-    var F = function(){};
-    F.prototype = Game.prototype;
-    _game.prototype = new F();
-    _game.prototype.constructor = _game;
-    _game.superclass = Game.prototype;
+    Utils.extends(_game, Game);
 }
 Game.registerGame = function (name, _game) {
     if(Game.__list.hasOwnProperty(name))
@@ -199,7 +384,223 @@ ModAPI.registerAPI("RetroWaveGame", Game)
 
 
 
-// file: arcade/menu.js
+// games/window.js
+
+Game.BaseWindow = function(settings){
+    this.game = null;
+
+    this.__popup = new Popup();
+    this.__popup.setWidth(-1);
+    this.__popup.setHeight(-1);
+
+    this.rootView = new RelativeLayout(ctx);
+    this.rootView.setBackgroundDrawable(Textures.parseObj(settings.window));
+    this.__popup.setContentView(this.rootView);
+
+    this.__surface = new android.view.TextureView(ctx);
+    var surfaceParams = new RelativeLayout.LayoutParams(-1, -1);
+    surfaceParams.setMargins(
+        settings.window.border[0] * settings.window.scale,
+        settings.window.border[1] * settings.window.scale,
+        settings.window.border[2] * settings.window.scale,
+        settings.window.border[3] * settings.window.scale);
+    this.rootView.addView(this.__surface, surfaceParams);
+
+    
+
+    let exitNormal = Textures.parseObj(settings.exit.default),
+        exitPressed = Textures.parseObj(settings.exit.pressed);
+
+    let exit = new ImageView(ctx);
+    exit.setImageBitmap(exitNormal);
+    Textures.setStateImageButton(exit, exitNormal, exitPressed);
+
+    let exitButtonParams  = new RelativeLayout.LayoutParams(-2, -2);
+    exitButtonParams.setMargins(settings.exit.x, settings.exit.y, settings.exit.x, settings.exit.y);
+    settings.exit.rules.map(function(i){ exitButtonParams.addRule(i); });
+    this.rootView.addView(exit, exitButtonParams);
+    
+    this.__OnExit = settings.exit.onClick;
+    let fClose = this.close.bind(this);
+    exit.setOnClickListener(function(){
+        fClose();
+    });
+    
+    this.__thread = this.__thread.bind(this);
+}
+Game.BaseWindow.prototype.rootView = null;
+Game.BaseWindow.prototype.__surface = null;
+Game.BaseWindow.prototype.game = null;
+Game.BaseWindow.prototype.__popup = null;
+Game.BaseWindow.prototype.__opened = false;
+Game.BaseWindow.prototype.__drawing = false;
+Game.BaseWindow.prototype.__errorBG = Color.BLUE;
+Game.BaseWindow.prototype.__errorFont = (function(){
+    let p = new Paint();
+    p.setColor(Color.WHITE);
+    p.setTypeface(Game.UI.Typeface);
+    p.setTextSize(20);
+    return p;
+})();
+Game.BaseWindow.prototype.__OnExit = function(){};
+Game.BaseWindow.prototype.isOpened = function(){
+    return this.__opened;
+};
+Game.BaseWindow.prototype.open = function(){
+    if(!this.game instanceof Game)
+        throw new TypeError();
+    
+    if(this.isOpened()) return;
+    runUI((function(){
+        this.__popup.showAtLocation(ctx.getWindow().getDecorView(), 51, 0, 0);
+    }).bind(this));
+    this.__opened = true;
+    
+    var a = this.__thread;
+    (new Thread((function(ctx){
+        return function(){
+            ctx.__thread();
+        }
+    })(this))).start();
+};
+Game.BaseWindow.prototype.__thread = function(){
+    var canvas = null,
+        currentTime = 0,
+        lastTime = System.currentTimeMillis();
+
+    this.__drawing = true;
+    while (this.__opened) {
+        canvas = null;
+        try{
+            canvas = this.__surface.lockCanvas();
+            if (canvas == null) continue;
+
+            try{
+                currentTime = System.currentTimeMillis();
+                this.game.tick((currentTime - lastTime)/1000);
+    
+                this.game.draw(canvas);
+            }catch(e){
+                this.game.close();
+                canvas.drawColor(this.__errorBG);
+                let message = e.name + ":" + e.message + "(" + e.fileName + "#" + e.lineNumber + ")";
+                if(e.stack)
+                    message += "\n" + e.stack;
+                message = message.split("\n");
+
+                let rect = new Rect();
+                this.__errorFont.getTextBounds(message[0], 0, message[0].length, rect);
+                let height = rect.bottom - rect.top;
+
+                for(let i = 0, l = message.length; i < l; ){
+                    canvas.drawText(message[i], 10, (10 + height) * (++i), this.__errorFont);
+                }
+                break;
+            }finally{
+                this.__surface.unlockCanvasAndPost(canvas);
+                lastTime = currentTime;
+            }
+        }catch(e){
+            alert(e);
+            break;
+        }
+    }
+    this.__drawing = false;
+};
+Game.BaseWindow.prototype.close = function(){
+    if(!this.isOpened()) return;
+
+    this.__opened = false;
+    while(this.__drawing){}
+    if(this.game)
+        this.game.close();
+
+    this.__OnExit();
+    runUI((function(){
+        this.__popup.dismiss();
+    }).bind(this));
+};
+
+Game.StandardWindow = function(settings){
+    this.superclass.constructor.apply(this, arguments);
+    //Left
+    let leftNormal = Textures.parseObj(settings.left.default),
+        leftPressed = Textures.parseObj(settings.left.pressed);
+
+    let left = new ImageView(ctx);
+    left.setImageBitmap(leftNormal);
+    left.setOnClickListener((function(ctx){
+        return function(){
+            ctx.game.invoke(Game.CONTROLS.LEFT)
+        }
+    })(this))
+    Textures.setStateImageButton(left, leftNormal, leftPressed);
+
+    let leftButtonParams  = new RelativeLayout.LayoutParams(-2, -2);
+    leftButtonParams.setMargins(settings.left.x, settings.left.y, settings.left.x, settings.left.y);
+    settings.left.rules.map(function(i){ leftButtonParams.addRule(i); });
+    this.rootView.addView(left, leftButtonParams);
+
+    // Right
+    let rightNormal = Textures.parseObj(settings.right.default),
+        rightPressed = Textures.parseObj(settings.right.pressed);
+
+    let right = new ImageView(ctx);
+    right.setImageBitmap(rightNormal);
+    right.setOnClickListener((function(ctx){
+        return function(){
+            ctx.game.invoke(Game.CONTROLS.RIGHT)
+        }
+    })(this))
+    Textures.setStateImageButton(right, rightNormal, rightPressed);
+
+    let rightButtonParams  = new RelativeLayout.LayoutParams(-2, -2);
+    rightButtonParams.setMargins(settings.right.x, settings.right.y, settings.right.x, settings.right.y);
+    settings.right.rules.map(function(i){ rightButtonParams.addRule(i); });
+    this.rootView.addView(right, rightButtonParams);
+
+    //Up
+    let upNormal = Textures.parseObj(settings.up.default),
+        upPressed = Textures.parseObj(settings.up.pressed);
+
+    let up = new ImageView(ctx);
+    up.setImageBitmap(upNormal);
+    up.setOnClickListener((function(ctx){
+        return function(){
+            ctx.game.invoke(Game.CONTROLS.UP)
+        }
+    })(this))
+    Textures.setStateImageButton(up, upNormal, upPressed);
+
+    let upButtonParams  = new RelativeLayout.LayoutParams(-2, -2);
+    upButtonParams.setMargins(settings.up.x, settings.up.y, settings.up.x, settings.up.y);
+    settings.up.rules.map(function(i){ upButtonParams.addRule(i); });
+    this.rootView.addView(up, upButtonParams);
+
+    //Down
+    let downNormal = Textures.parseObj(settings.down.default),
+        downPressed = Textures.parseObj(settings.down.pressed);
+
+    let down = new ImageView(ctx);
+    down.setImageBitmap(downNormal);
+    down.setOnClickListener((function(ctx){
+        return function(){
+            ctx.game.invoke(Game.CONTROLS.DOWN)
+        }
+    })(this))
+    Textures.setStateImageButton(down, downNormal, downPressed);
+
+    let downButtonParams  = new RelativeLayout.LayoutParams(-2, -2);
+    downButtonParams.setMargins(settings.down.x, settings.down.y, settings.down.x, settings.down.y);
+    settings.down.rules.map(function(i){ downButtonParams.addRule(i); });
+    this.rootView.addView(down, downButtonParams);
+
+}; Utils.extends(Game.StandardWindow, Game.BaseWindow);
+
+
+
+
+// arcade/menu.js
 
 var ArcadeMenu = function(){
     this.elements = [];
@@ -262,6 +663,7 @@ var ArcadeMenu = function(){
     });
 }; Game.extends(ArcadeMenu);
 ArcadeMenu.prototype.sid = "arcade_menu";
+
 ArcadeMenu.prototype.MenuTextEmpty = (function(){
     let paint = new Paint();
     paint.setARGB(255, 255, 255, 255);
@@ -275,7 +677,7 @@ ArcadeMenu.prototype.Start = function(game){
     if(!game instanceof Game)
         throw new TypeError("Not Game.");
 
-    Arcade.game = new game();
+        ArcadeWindow.game = new game();
 };
 ArcadeMenu.prototype.draw = function (canvas) { 
     //Draw background
@@ -345,14 +747,10 @@ ArcadeMenu.UI.ItemList.prototype.getRect = function(){
     return this.__rect;
 }
 
-Callback.addCallback("PostLoaded", function(){
-    Arcade.game = new ArcadeMenu();
-});
 
 
 
-
-// file: arcade/arcade.js
+// arcade/arcade.js
 
 IDRegistry.genBlockID("arcade");
 Block.createBlockWithRotateAndModel("arcade", "Arcade", "arcade", "arcade", { x:0, z:0 }, "planks");
@@ -368,248 +766,161 @@ Block.createBlockWithRotateAndModel("arcade", "Arcade", "arcade", "arcade", { x:
 
 
 
-// file: arcade/window.js
+// arcade/window.js
 
-//MotionEvent
-var Arcade = {
-    game:null,
-    window:null
-};
-
-Arcade.window = (function(){
-    let popup = new Popup();
-    popup.setWidth(-1);
-    popup.setHeight(-1);
-    let surface, surfaceHolder;
-    let errorPaint = (function(){
-        let p = new Paint();
-        p.setColor(Color.WHITE);
-        p.setTypeface(Game.UI.Typeface);
-        p.setTextSize(20);
-        return p;
-    })();
-
-    let thisWindow =  {
-        open:function(){
-            if(thisWindow.opened) return;
-            runUI(function(){
-                popup.showAtLocation(ctx.getWindow().getDecorView(), 51, 0, 0);
-            });
-            thisWindow.opened = true;
-            new Thread(function(){
-                var canvas = null, error = false;
-                thisWindow.drawing = true;
-                let lastTime = System.currentTimeMillis();
-                while (thisWindow.opened) {
-                    let currentTime = System.currentTimeMillis();
-                    Arcade.game.tick((currentTime - lastTime)/1000);
-                    lastTime = currentTime;
-
-                    canvas = null;
-                    try {
-                        canvas = surface.lockCanvas();
-                        if (canvas == null) continue;
-
-                        Arcade.game.draw(canvas);
-                    } catch(e){
-                        canvas.drawColor(Color.BLUE);
-                        e = e.toString();
-                        let rect = new Rect();
-                        errorPaint.getTextBounds(e, 0, e.length || e.length(), rect)
-                        canvas.drawText(e, 10, 10 + rect.bottom - rect.top, errorPaint)
-                        error = true;
-                    }finally {
-                        if (canvas != null)
-                            surface.unlockCanvasAndPost(canvas);
-                        if(error)
-                            break;
-                    }
-                }
-                thisWindow.drawing = false;
-            }).start();
+var ArcadeWindow = new Game.StandardWindow({
+    window:{
+        file:__dir__ + "gui/arcadeUI.png",
+        bitmap:{
+            x:0,
+            y:0,
+            width:64,
+            height:58
         },
-        opened:false,
-        drawing:false,
-        close:function(){
-            if(!thisWindow.opened) return;
-        
-            thisWindow.opened = false;
-            while(thisWindow.drawing){}
-            Arcade.game = new ArcadeMenu();
-            runUI(function(){
-                popup.dismiss();
-            });
+        ninePatch:{
+            x:[23, 24, 40, 41],
+            y:[5, 37]
+        },
+        scale:8,
+        border:[16, 5, 16, 21]
+    },
+    exit:{
+        default:{
+            file:__dir__ + "gui/arcadeUI.png",
+            scale:15,
+            bitmap:{
+                x:28,
+                y:63,
+                width:3,
+                height:3
+            }
+        },
+        pressed:{
+            file:__dir__ + "gui/arcadeUI.png",
+            scale:15,
+            bitmap:{
+                x:28,
+                y:66,
+                width:3,
+                height:3
+            }
+        },
+        rules:[RelativeLayout.ALIGN_PARENT_RIGHT],
+        x:8 * 5,
+        y:8 * 5,
+        onClick:function(){
+            this.game = new ArcadeMenu();
         }
-    };
-
-    let rootLayout = new RelativeLayout(ctx);
-    rootLayout.setBackgroundDrawable((function(){
-        let bitmap = new Bitmap.createBitmap(ArcadeUIBitmap, 0, 0, 64, 58);
-        bitmap = Bitmap.createScaledBitmap(bitmap, 64 * 8, 58 * 8, false);
-        return createNinePatch(bitmap, [23 * 8, 24 * 8, 40 * 8, 41 * 8], [5 * 8, 37 * 8], [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]);
-    })());
-    popup.setContentView(rootLayout);
-
-    var surfaceParams = new RelativeLayout.LayoutParams(-1, -1);
-    surfaceParams.setMargins(128, 40, 128, 168);
-    runUI(function(){
-        surface = new android.view.TextureView(ctx);
-        surface.setOnClickListener(function(){alert("Click!")})
-        rootLayout.addView(surface, surfaceParams);
-    });
-
-    
-
-    let exitButton = new ImageView(ctx);
-    let exitButtonDefaultBitmap = (function(){
-            let bitmap = new Bitmap.createBitmap(ArcadeUIBitmap, 28, 63, 3, 3);
-            return Bitmap.createScaledBitmap(bitmap, 3 * 15, 3 * 15, false);
-        })(),
-        exitButtonPressBitmap = (function(){
-            let bitmap = new Bitmap.createBitmap(ArcadeUIBitmap, 28, 66, 3, 3);
-            return Bitmap.createScaledBitmap(bitmap, 3 * 10, 3 * 10, false);
-        })();
-    exitButton.setImageBitmap(exitButtonDefaultBitmap);
-    exitButton.setOnClickListener(thisWindow.close);
-    exitButton.setOnTouchListener(function(b, c){
-        var f = c.getActionMasked();
-        if (f == MotionEvent.ACTION_DOWN) {
-            b.setImageBitmap(exitButtonPressBitmap);
-        }
-        if (f == MotionEvent.ACTION_CANCEL || f == MotionEvent.ACTION_UP) {
-            b.setImageBitmap(exitButtonDefaultBitmap);
-        }
-        return false;
-    })
-    let exitButtonParams  = new RelativeLayout.LayoutParams(-2, -2);
-    exitButtonParams.setMargins(0, 8 * 5, 8 * 5, 0);
-    exitButtonParams.addRule(RelativeLayout.ALIGN_PARENT_RIGHT);
-    rootLayout.addView(exitButton, exitButtonParams);
-
-    let buttonControlUp = new ImageView(ctx);
-    let buttonControlUpDefaultBitmap = (function(){
-            let bitmap = new Bitmap.createBitmap(ArcadeUIBitmap, 21, 58, 7, 7);
-            return Bitmap.createScaledBitmap(bitmap, 7 * 8, 7 * 8, false);
-        })(),
-        buttonControlUpPressBitmap = (function(){
-            let bitmap = new Bitmap.createBitmap(ArcadeUIBitmap, 21, 65, 7, 7);
-            return Bitmap.createScaledBitmap(bitmap, 7 * 8, 7 * 8, false);
-        })();
-    buttonControlUp.setImageBitmap(buttonControlUpDefaultBitmap);
-    buttonControlUp.setOnClickListener(function(){
-        Arcade.game.invoke(Game.CONTROLS.UP)
-    });
-    buttonControlUp.setOnTouchListener(function(b, c){
-        var f = c.getActionMasked();
-        if (f == MotionEvent.ACTION_DOWN) {
-            b.setImageBitmap(buttonControlUpPressBitmap);
-        }
-        if (f == MotionEvent.ACTION_CANCEL || f == MotionEvent.ACTION_UP) {
-            b.setImageBitmap(buttonControlUpDefaultBitmap);
-        }
-        return false;
-    })
-    let buttonControlUpParams  = new RelativeLayout.LayoutParams(-2, -2);
-    buttonControlUpParams.addRule(RelativeLayout.ALIGN_PARENT_BOTTOM);
-    buttonControlUpParams.addRule(RelativeLayout.ALIGN_PARENT_RIGHT);
-    buttonControlUpParams.setMargins(0, 0, 270, 8 * 2);
-    rootLayout.addView(buttonControlUp, buttonControlUpParams);
-
-    let buttonControlDown = new ImageView(ctx);
-    let buttonControlDownDefaultBitmap = (function(){
-        let bitmap = new Bitmap.createBitmap(ArcadeUIBitmap, 14, 58, 7, 7);
-        return Bitmap.createScaledBitmap(bitmap, 7 * 8, 7 * 8, false);
-    })(),
-    buttonControlDownPressBitmap = (function(){
-        let bitmap = new Bitmap.createBitmap(ArcadeUIBitmap, 14, 65, 7, 7);
-        return Bitmap.createScaledBitmap(bitmap, 7 * 8, 7 * 8, false);
-    })();
-
-    buttonControlDown.setImageBitmap(buttonControlDownDefaultBitmap);
-    buttonControlDown.setOnClickListener(function(){
-        Arcade.game.invoke(Game.CONTROLS.DOWN)
-    });
-    buttonControlDown.setOnTouchListener(function(b, c){
-        var f = c.getActionMasked();
-        if (f == MotionEvent.ACTION_DOWN) {
-            b.setImageBitmap(buttonControlDownPressBitmap);
-        }
-        if (f == MotionEvent.ACTION_CANCEL || f == MotionEvent.ACTION_UP) {
-            b.setImageBitmap(buttonControlDownDefaultBitmap);
-        }
-        return false;
-    })
-    let buttonControlDownParams  = new RelativeLayout.LayoutParams(-2, -2);
-    buttonControlDownParams.addRule(RelativeLayout.ALIGN_PARENT_BOTTOM);
-    buttonControlDownParams.addRule(RelativeLayout.ALIGN_PARENT_RIGHT);
-    buttonControlDownParams.setMargins(0, 0, 150, 8 * 2);
-    rootLayout.addView(buttonControlDown, buttonControlDownParams);
-
-    let buttonControlLeft = new ImageView(ctx);
-    let buttonControlLeftDefaultBitmap = (function(){
-        let bitmap = new Bitmap.createBitmap(ArcadeUIBitmap, 0, 58, 7, 7);
-        return Bitmap.createScaledBitmap(bitmap, 7 * 8, 7 * 8, false);
-    })(),
-    buttonControlLeftPressBitmap = (function(){
-        let bitmap = new Bitmap.createBitmap(ArcadeUIBitmap, 0, 65, 7, 7);
-        return Bitmap.createScaledBitmap(bitmap, 7 * 8, 7 * 8, false);
-    })();
-
-    buttonControlLeft.setImageBitmap(buttonControlLeftDefaultBitmap);
-    buttonControlLeft.setOnClickListener(function(){
-        Arcade.game.invoke(Game.CONTROLS.LEFT)
-    });
-    buttonControlLeft.setOnTouchListener(function(b, c){
-        var f = c.getActionMasked();
-        if (f == MotionEvent.ACTION_DOWN) {
-            b.setImageBitmap(buttonControlLeftPressBitmap);
-        }
-        if (f == MotionEvent.ACTION_CANCEL || f == MotionEvent.ACTION_UP) {
-            b.setImageBitmap(buttonControlLeftDefaultBitmap);
-        }
-        return false;
-    })
-    let buttonControlLeftParams  = new RelativeLayout.LayoutParams(-2, -2);
-    buttonControlLeftParams.addRule(RelativeLayout.ALIGN_PARENT_BOTTOM);
-    buttonControlLeftParams.setMargins(150, 0, 0, 8 * 2);
-    rootLayout.addView(buttonControlLeft, buttonControlLeftParams);
-
-    let buttonControlRight = new ImageView(ctx);
-    let buttonControlRightDefaultBitmap = (function(){
-        let bitmap = new Bitmap.createBitmap(ArcadeUIBitmap, 7, 58, 7, 7);
-        return Bitmap.createScaledBitmap(bitmap, 7 * 8, 7 * 8, false);
-    })(),
-    buttonControlRightPressBitmap = (function(){
-        let bitmap = new Bitmap.createBitmap(ArcadeUIBitmap, 7, 65, 7, 7);
-        return Bitmap.createScaledBitmap(bitmap, 7 * 8, 7 * 8, false);
-    })();
-
-    buttonControlRight.setImageBitmap(buttonControlRightDefaultBitmap);
-    buttonControlRight.setOnClickListener(function(){
-        Arcade.game.invoke(Game.CONTROLS.RIGHT)
-    });
-    buttonControlRight.setOnTouchListener(function(b, c){
-        var f = c.getActionMasked();
-        if (f == MotionEvent.ACTION_DOWN) {
-            b.setImageBitmap(buttonControlRightPressBitmap);
-        }
-        if (f == MotionEvent.ACTION_CANCEL || f == MotionEvent.ACTION_UP) {
-            b.setImageBitmap(buttonControlRightDefaultBitmap);
-        }
-        return false;
-    })
-    let buttonControlRightParams  = new RelativeLayout.LayoutParams(-2, -2);
-    buttonControlRightParams.addRule(RelativeLayout.ALIGN_PARENT_BOTTOM);
-    buttonControlRightParams.setMargins(270, 0, 0, 8 * 2);
-    rootLayout.addView(buttonControlRight, buttonControlRightParams);
-
-    return thisWindow;
-})();
+    },
+    left:{
+        default:{
+            file:__dir__ + "gui/arcadeUI.png",
+            scale:8,
+            bitmap:{
+                x:0,
+                y:58,
+                width: 7, 
+                height: 7
+            }
+        },
+        pressed:{
+            file:__dir__ + "gui/arcadeUI.png",
+            scale:8,
+            bitmap:{
+                x:0,
+                y:65,
+                width: 7, 
+                height: 7
+            }
+        },
+        rules:[RelativeLayout.ALIGN_PARENT_BOTTOM],
+        x:150,
+        y:8 * 2
+    },
+    right:{
+        default:{
+            file:__dir__ + "gui/arcadeUI.png",
+            scale:8,
+            bitmap:{
+                x:7,
+                y:58,
+                width: 7, 
+                height: 7
+            }
+        },
+        pressed:{
+            file:__dir__ + "gui/arcadeUI.png",
+            scale:8,
+            bitmap:{
+                x:7,
+                y:65,
+                width: 7, 
+                height: 7
+            }
+        },
+        rules:[RelativeLayout.ALIGN_PARENT_BOTTOM],
+        x:270,
+        y:8 * 2
+    },
+    up:{
+        default:{
+            file:__dir__ + "gui/arcadeUI.png",
+            scale:8,
+            bitmap:{
+                x:21,
+                y:58,
+                width: 7, 
+                height: 7
+            }
+        },
+        pressed:{
+            file:__dir__ + "gui/arcadeUI.png",
+            scale:8,
+            bitmap:{
+                x:21,
+                y:65,
+                width: 7, 
+                height: 7
+            }
+        },
+        rules:[RelativeLayout.ALIGN_PARENT_BOTTOM, RelativeLayout.ALIGN_PARENT_RIGHT],
+        x:270,
+        y:8 * 2
+    },
+    down:{
+        default:{
+            file:__dir__ + "gui/arcadeUI.png",
+            scale:8,
+            bitmap:{
+                x:14,
+                y:58,
+                width: 7, 
+                height: 7
+            }
+        },
+        pressed:{
+            file:__dir__ + "gui/arcadeUI.png",
+            scale:8,
+            bitmap:{
+                x:14,
+                y:65,
+                width: 7, 
+                height: 7
+            }
+        },
+        rules:[RelativeLayout.ALIGN_PARENT_BOTTOM, RelativeLayout.ALIGN_PARENT_RIGHT],
+        x:150,
+        y:8 * 2
+    },
+});
+Callback.addCallback("PostLoaded", function(){
+    ArcadeWindow.game = new ArcadeMenu();
+});
 
 
 Callback.addCallback("ItemUse", function(c, i, b){
     if(b.id == BlockID.arcade){
-        Arcade.window.open();
+        ArcadeWindow.open();
         ICGame.prevent();
     }
 });
@@ -617,7 +928,7 @@ Callback.addCallback("ItemUse", function(c, i, b){
 
 
 
-// file: games/tetris.js
+// games/tetris.js
 
 var Tetris = function(){
     this.initDefaultValue();
@@ -694,6 +1005,8 @@ Tetris.prototype.time = 0;
 Tetris.prototype.end = false;
 
 Tetris.prototype.tick = function(delta){
+    this.superclass.tick.apply(this, arguments);
+
     this.time += delta;
     
     if(this.time >= 1){
@@ -826,7 +1139,6 @@ Tetris.prototype.draw = function(canvas){
 Tetris.prototype.initDefaultValue = function(){
     this.rect = null;
     this.score = 0;
-    this.__end = false;
     this.end = false;
     this.time = 0;
 
@@ -838,12 +1150,14 @@ Tetris.prototype.initDefaultValue = function(){
             this.field[y].push(null);
     }
 
+    this.__soundPlayer = new Sound("tetris.wav");
+    this.__soundPlayer.play();
+    this.__soundPlayer.setLooping(true);
     this.GenerateNextElement();
     this.UpdateElement();   
 }
 Tetris.prototype.close = function(){
-    this.initDefaultValue();
-    Tetris.superclass.close.apply(this);
+    this.__soundPlayer.stop();
 }
 //Element
 Tetris.Element = function(form){
@@ -895,7 +1209,7 @@ Tetris.Element.prototype.draw = function(canvas){
 }
 Tetris.Element.prototype.drawSize = function(canvas, _x, _y, size){
     for(let y = this.Form.length-1; y >= 0; y--)
-        for(let x = this.Form[0].length-1; x >= 0; x--)
+        for(let x = this.Form[y].length-1; x >= 0; x--)
             if(this.Form[y][x] == 1)
             canvas.drawRect(_x + size * x,        _y + size * y,
                             _x + size * (x + 1),  _y + size * (y + 1), Tetris.paints[this.indexPaint]);
@@ -906,7 +1220,7 @@ Game.registerGame("tetris", Tetris);
 
 
 
-// file: cooler/cooler.js
+// cooler/cooler.js
 
 IDRegistry.genBlockID("cooler");
 Block.createBlockWithRotateAndModel("cooler", "Refrigerator", "cooler", "cooler", { x:0, z:0 }, "iron_block");
@@ -935,7 +1249,7 @@ TileEntity.registerPrototype(BlockID.cooler, {
 
 
 
-// file: cooler/interface.js
+// cooler/interface.js
 
 var CoolerInterface = (function(){
     let elements = {};
@@ -992,7 +1306,7 @@ Translation.addTranslation("Refrigerator", {
 
 
 
-// file: tv/tv.js
+// tv/tv.js
 
 IDRegistry.genBlockID("tvbox");
 Block.createBlockWithRotateAndModel("tvbox", "TV", "tv", "tv", { x:0, z:0 }, "iron_block");
@@ -1000,7 +1314,7 @@ Block.createBlockWithRotateAndModel("tvbox", "TV", "tv", "tv", { x:0, z:0 }, "ir
 
 
 
-// file: tardis/tardis.js
+// tardis/tardis.js
 
 IDRegistry.genBlockID("tardis");
 Block.createBlockWithRotateAndModel("tardis", "Tardis", "tardis", "tardis", { x:0, z:0 }, "tardis", false);
@@ -1022,6 +1336,8 @@ var Tardis = {
     __getBlockSource:function(){
         if(Tardis.__blockSource == null)
             Tardis.__blockSource = BlockSource.getDefaultForDimension(Native.Dimension.NORMAL);
+
+        return Tardis.__blockSource;
     },
     spawn:function(){
         Tardis.__pos = Player.getPosition();
@@ -1030,13 +1346,13 @@ var Tardis = {
         Tardis.__pos = GenerationUtils.findHighSurface(Tardis.__pos.x, Tardis.__pos.z);
         Tardis.__pos.y++;
 
-        Tardis.__getBlockSource.setBlock(Tardis.__pos.x, Tardis.__pos.y, Tardis.__pos.z, BlockID.tardis);
+        Tardis.__getBlockSource().setBlock(Tardis.__pos.x, Tardis.__pos.y, Tardis.__pos.z, BlockID.tardis);
         Network.sendToAllClients("retrowave.tardis.spawn", { position: Tardis.__pos });
 
         Tardis.spawned = true;
     },
     despawn:function(){
-        Tardis.__getBlockSource.setBlock(Tardis.__pos.x, Tardis.__pos.y, Tardis.__pos.z, 0);
+        Tardis.__getBlockSource().setBlock(Tardis.__pos.x, Tardis.__pos.y, Tardis.__pos.z, 0);
         Network.sendToAllClients("retrowave.tardis.despawn", {});
         Tardis.spawned = false;
     },
@@ -1052,7 +1368,7 @@ var Tardis = {
                 Tardis.despawn();
             }
         }else if(dayTime >= 17000 && dayTime < 20000){
-            if(Utils.random(0, 1000) <= 1 || true){
+            if(Utils.random(0, 1000) <= 1 || DEBUG){
                 Tardis.spawn();
             }
         }
@@ -1093,7 +1409,7 @@ Callback.addCallback("tick", Tardis.tick);
 
 
 
-// file: decor.js
+// decor.js
 
 IDRegistry.genBlockID("lenin");
 Block.createBlockWithRotateAndModel("lenin", "Lenin's bust", "lena bl", "lena_bl", { x:.5, z:.5 });
