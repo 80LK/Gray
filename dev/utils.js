@@ -10,6 +10,8 @@ const Utils = {
         F.prototype = Parent.prototype;
         Child.prototype = new F();
         Child.prototype.constructor = Child;
-        Child.superclass = Child.prototype.superclass = Parent.prototype;
+        
+        //Child.prototype.superclass =
+        Child.superclass = Parent.prototype;
     }
 }

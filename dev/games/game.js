@@ -49,8 +49,14 @@ Game.registerGame = function (name, _game) {
     if(Game.__list.hasOwnProperty(name))
         throw new Error("Game \""+name+"\" was been register.");
 
-    _game.prototype.sid = name;
+    _game.sid = _game.prototype.sid = name;
     Game.__list[name] = _game;
+}
+Game.getGameFormSID = function(name){
+    if(!Game.__list.hasOwnProperty(name))
+        return null;
+
+    return Game.__list[name];
 }
 
 Game.UI = {};

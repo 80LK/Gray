@@ -17,7 +17,11 @@ arcade/menu.js
 arcade/arcade.js
 arcade/window.js
 
-#dendy/dendy.js
+dendy/API.js
+
+dendy/nogame.js
+dendy/window.js
+dendy/dendy.js
 
 games/tetris.js
 

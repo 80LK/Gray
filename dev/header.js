@@ -68,6 +68,7 @@ var View = android.view.View,
    Color = android.graphics.Color,
    System = java.lang.System,
    MotionEvent = android.view.MotionEvent,
+   JavaArray = java.lang.reflect.Array
    BitmapFactory = android.graphics.BitmapFactory;
 
 var ArcadeUIBitmap = new BitmapFactory.decodeFile(__dir__ + "gui/arcadeUI.png");

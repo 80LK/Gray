@@ -32,12 +32,24 @@ Game.BaseWindow = function(settings){
     settings.exit.rules.map(function(i){ exitButtonParams.addRule(i); });
     this.rootView.addView(exit, exitButtonParams);
     
-    this.__OnExit = settings.exit.onClick;
-    let fClose = this.close.bind(this);
+    if(settings.exit.onClick)
+        this.__OnExit = settings.exit.onClick;
+    
+        let fClose = this.close.bind(this);
     exit.setOnClickListener(function(){
         fClose();
     });
     
+    if(settings.game){
+        if(settings.game instanceof Game){
+            this.game = settings.game;
+        } else if(settings.game.prototype.constructor){
+            let game = new settings.game();
+            if(game instanceof Game)
+                this.game = game;
+        }
+    }
+
     this.__thread = this.__thread.bind(this);
 }
 Game.BaseWindow.prototype.rootView = null;
@@ -134,7 +146,7 @@ Game.BaseWindow.prototype.close = function(){
 };
 
 Game.StandardWindow = function(settings){
-    this.superclass.constructor.apply(this, arguments);
+    Game.StandardWindow.superclass.constructor.apply(this, arguments);
     //Left
     let leftNormal = Textures.parseObj(settings.left.default),
         leftPressed = Textures.parseObj(settings.left.pressed);

@@ -73,7 +73,7 @@ Tetris.prototype.time = 0;
 Tetris.prototype.end = false;
 
 Tetris.prototype.tick = function(delta){
-    this.superclass.tick.apply(this, arguments);
+    Tetris.superclass.tick.apply(this, arguments);
 
     this.time += delta;
     
@@ -284,3 +284,9 @@ Tetris.Element.prototype.drawSize = function(canvas, _x, _y, size){
 }
 
 Game.registerGame("tetris", Tetris);
+
+Game.registerCartridge(Tetris, "Tetris", {
+    name:"cartridge",
+    meta:0,
+    color: Color.argb(255, 0, 188, 89)
+});

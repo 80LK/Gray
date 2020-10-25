@@ -1,13 +1,13 @@
 /*
 BUILD INFO:
-  dir: dev/
+  dir: dev
   target: mod.js
-  files: 15
+  files: 23
 */
 
 
 
-// header.js
+// file: header.js
 
 /*
    ____                        
@@ -79,6 +79,7 @@ var View = android.view.View,
    Color = android.graphics.Color,
    System = java.lang.System,
    MotionEvent = android.view.MotionEvent,
+   JavaArray = java.lang.reflect.Array
    BitmapFactory = android.graphics.BitmapFactory;
 
 var ArcadeUIBitmap = new BitmapFactory.decodeFile(__dir__ + "gui/arcadeUI.png");
@@ -131,7 +132,7 @@ IMPORT("SoundAPI");
 
 
 
-// utils.js
+// file: utils.js
 
 const Utils = {
     random:function(min, max){
@@ -145,14 +146,16 @@ const Utils = {
         F.prototype = Parent.prototype;
         Child.prototype = new F();
         Child.prototype.constructor = Child;
-        Child.superclass = Child.prototype.superclass = Parent.prototype;
+        
+        //Child.prototype.superclass =
+        Child.superclass = Parent.prototype;
     }
 }
 
 
 
 
-// Textures.js
+// file: Textures.js
 
 var Textures = {
     __bitmaps:{},
@@ -250,36 +253,7 @@ let bitmap = new Bitmap.createBitmap(ArcadeUIBitmap, 0, 0, 64, 58);
 
 
 
-// radio/radio.js
-
-IDRegistry.genBlockID("radio");
-Block.createBlockWithRotateAndModel("radio", "Radio", "radio", "radio", { x:.5, z:.5 }, "planks");
-
-Sound.registerTileEntity(BlockID.radio, {
-    init:function(){
-        this.SetSource(__RadioAPI.getFile());
-    },
-    OnCompletion:function(){
-        this.SetSource(__RadioAPI.getFile());
-        if(this.isPlaying())
-            this.Play();
-    },
-    isPlaying:function(){
-        return this.networkData.getBoolean("playing", false);
-    },
-    click:function(){
-        let playing = this.isPlaying();
-        
-        this.networkData.putBoolean("playing", !playing);
-        this.networkData.sendChanges();
-        
-        if(playing){
-            this.Stop(true);
-        }else{
-            this.Play();
-        }
-    }
-});
+// file: radio/API.js
 
 var __RadioAPI = {
     mod:"NoNameAddon",
@@ -319,7 +293,202 @@ __RadioAPI.init();
 
 
 
-// games/game.js
+// file: radio/radio.js
+
+IDRegistry.genBlockID("radio");
+Block.createBlockWithRotateAndModel("radio", "Radio", "radio", "radio", { x:.5, z:.5 }, "planks");
+
+Sound.registerTileEntity(BlockID.radio, {
+    init:function(){
+        this.SetSource(__RadioAPI.getFile());
+    },
+    OnCompletion:function(){
+        this.SetSource(__RadioAPI.getFile());
+        if(this.isPlaying())
+            this.Play();
+    },
+    isPlaying:function(){
+        return this.networkData.getBoolean("playing", false);
+    },
+    click:function(){
+        let playing = this.isPlaying();
+        
+        this.networkData.putBoolean("playing", !playing);
+        this.networkData.sendChanges();
+        
+        if(playing){
+            this.Stop(true);
+        }else{
+            this.Play();
+        }
+    }
+});
+
+
+
+
+// file: gramophone/block.js
+
+IDRegistry.genBlockID("gramophone");
+Block.createBlockWithRotateAndModel("gramophone", "Gramophone", "gramophone", "gramophone", { x:0, z:0 }, "iron_block");
+
+var gramophoneOffset = [
+    [19/32, 19/32],
+    [13/32, 13/32],
+    [19/32, 13/32],
+    [13/32, 19/32]
+];
+Sound.registerTileEntity(BlockID.gramophone, {
+    defaultValues:{
+        disk:null
+    },
+    insertDisk:function(id){
+        this.data.disk = id;
+        this.sendPacket("insert", {disk:id});
+    },
+    extractDisk:function(){
+        if(this.data.disk != null){
+            this.blockSource.spawnDroppedItem(this.x, this.y+1, this.z, this.data.disk, 1, 0, null);
+            this.data.disk = null;
+            this.Stop();
+            this.sendPacket("extract");
+            ICGame.prevent();
+        }
+    },
+
+    init:function(){
+        this.tile = this.blockSource.getBlock(this.x, this.y, this.z);
+    },
+    click:function(id, count, data, coords, client){
+        if(Entity.getSneaking(client)){
+            this.extractDisk();
+            return;
+        }
+        if(GramophoneDisks.isDisk(id)){
+            if(this.data.disk)
+                this.extractDisk();
+
+            this.insertDisk(id);
+            Entity.setCarriedItem(client, 0,0,0);
+            return;
+        }
+
+        if(this.IsPlaying())
+            this.Pause();
+        else
+            this.Play();
+    },
+    destroyBlock:function(){
+        this.extractDisk();
+    },
+
+    events:{
+        init:function(){
+            this.sendResponse("init", {
+                disk:this.data.disk,
+                data:this.tile.data
+            });
+        }
+    },
+
+    client:{
+        insertDisk:function(id){
+            if(!id) return;
+            
+            id = Network.serverToLocalId(id);
+            
+            this.__soundPlayer.setSource(GramophoneDisks.getSource(id));
+            
+            this.animate.describeItem({
+                id: id,
+                count: 1,
+                data: 0,
+                size: 1,
+                rotation: [Math.PI/2, 0, 0],
+                notRandomize: true
+            });
+
+            this.animate.loadCustom((function(){
+                let transform = this.animate.transform();
+
+                if(transform && this.__soundPlayer.isPlaying())
+                    transform.rotate(0, 0, Math.PI/40);
+            }).bind(this));
+        },
+        extractDisk:function(){
+            this.animate.destroy();
+        },
+
+        load:function(){
+            this.animate = new Animation.Item(this.x, this.y, this.z);
+            this.sendPacket("init");
+        },
+
+        events:{
+            init:function(data){
+                this.insertDisk(data.disk);
+                this.offsetDisk = gramophoneOffset[data.data];
+                this.animate.setPos(this.x + this.offsetDisk[0], this.y + (3.5 / 16), this.z + this.offsetDisk[1]);
+            },
+            insert:function(data){
+                this.insertDisk(data.disk);
+            },
+            extract:function(){
+                this.extractDisk();
+            }
+        }
+    }
+});
+
+
+
+
+// file: gramophone/API.js
+
+var GramophoneDisksPrivate = {
+    disks:{},
+};
+
+var GramophoneDisks = {
+    registerDisk:function(id, file){
+        if(GramophoneDisksPrivate.hasOwnProperty(id))
+            throw new Error("Disk with id "+id+" was been registered");
+            
+        GramophoneDisksPrivate[id] = file;
+    },
+    isDisk:function(id){
+        return GramophoneDisksPrivate.hasOwnProperty(id);
+    },
+    getSource:function(id){
+        return GramophoneDisksPrivate[id];
+    }
+};
+
+ModAPI.registerAPI("RetroWaveGramophone", GramophoneDisks);
+
+
+
+
+// file: gramophone/mainDisks.js
+
+GramophoneDisks.registerDisk(500, __dir__ + "sounds/disks/13.oga");
+GramophoneDisks.registerDisk(501, __dir__ + "sounds/disks/Cat.oga");
+GramophoneDisks.registerDisk(502, __dir__ + "sounds/disks/Blocks.oga");
+GramophoneDisks.registerDisk(503, __dir__ + "sounds/disks/Chirp.oga");
+GramophoneDisks.registerDisk(504, __dir__ + "sounds/disks/Far.oga");
+GramophoneDisks.registerDisk(505, __dir__ + "sounds/disks/Mall.oga");
+GramophoneDisks.registerDisk(506, __dir__ + "sounds/disks/Mellohi.oga");
+GramophoneDisks.registerDisk(507, __dir__ + "sounds/disks/Stal.oga");
+GramophoneDisks.registerDisk(508, __dir__ + "sounds/disks/Strad.oga");
+GramophoneDisks.registerDisk(509, __dir__ + "sounds/disks/Ward.oga");
+GramophoneDisks.registerDisk(510, __dir__ + "sounds/disks/11.oga");
+GramophoneDisks.registerDisk(511, __dir__ + "sounds/disks/Wait.oga");
+GramophoneDisks.registerDisk(759, __dir__ + "sounds/disks/Pigstep.ogg");
+
+
+
+
+// file: games/game.js
 
 var Game = function (){};
 Game.prototype.AddHandlerControl = function (controls, event) {
@@ -372,8 +541,14 @@ Game.registerGame = function (name, _game) {
     if(Game.__list.hasOwnProperty(name))
         throw new Error("Game \""+name+"\" was been register.");
 
-    _game.prototype.sid = name;
+    _game.sid = _game.prototype.sid = name;
     Game.__list[name] = _game;
+}
+Game.getGameFormSID = function(name){
+    if(!Game.__list.hasOwnProperty(name))
+        return null;
+
+    return Game.__list[name];
 }
 
 Game.UI = {};
@@ -384,7 +559,7 @@ ModAPI.registerAPI("RetroWaveGame", Game)
 
 
 
-// games/window.js
+// file: games/window.js
 
 Game.BaseWindow = function(settings){
     this.game = null;
@@ -420,12 +595,24 @@ Game.BaseWindow = function(settings){
     settings.exit.rules.map(function(i){ exitButtonParams.addRule(i); });
     this.rootView.addView(exit, exitButtonParams);
     
-    this.__OnExit = settings.exit.onClick;
-    let fClose = this.close.bind(this);
+    if(settings.exit.onClick)
+        this.__OnExit = settings.exit.onClick;
+    
+        let fClose = this.close.bind(this);
     exit.setOnClickListener(function(){
         fClose();
     });
     
+    if(settings.game){
+        if(settings.game instanceof Game){
+            this.game = settings.game;
+        } else if(settings.game.prototype.constructor){
+            let game = new settings.game();
+            if(game instanceof Game)
+                this.game = game;
+        }
+    }
+
     this.__thread = this.__thread.bind(this);
 }
 Game.BaseWindow.prototype.rootView = null;
@@ -522,7 +709,7 @@ Game.BaseWindow.prototype.close = function(){
 };
 
 Game.StandardWindow = function(settings){
-    this.superclass.constructor.apply(this, arguments);
+    Game.StandardWindow.superclass.constructor.apply(this, arguments);
     //Left
     let leftNormal = Textures.parseObj(settings.left.default),
         leftPressed = Textures.parseObj(settings.left.pressed);
@@ -600,7 +787,7 @@ Game.StandardWindow = function(settings){
 
 
 
-// arcade/menu.js
+// file: arcade/menu.js
 
 var ArcadeMenu = function(){
     this.elements = [];
@@ -750,7 +937,7 @@ ArcadeMenu.UI.ItemList.prototype.getRect = function(){
 
 
 
-// arcade/arcade.js
+// file: arcade/arcade.js
 
 IDRegistry.genBlockID("arcade");
 Block.createBlockWithRotateAndModel("arcade", "Arcade", "arcade", "arcade", { x:0, z:0 }, "planks");
@@ -766,7 +953,7 @@ Block.createBlockWithRotateAndModel("arcade", "Arcade", "arcade", "arcade", { x:
 
 
 
-// arcade/window.js
+// file: arcade/window.js
 
 var ArcadeWindow = new Game.StandardWindow({
     window:{
@@ -928,7 +1115,393 @@ Callback.addCallback("ItemUse", function(c, i, b){
 
 
 
-// games/tetris.js
+// file: dendy/API.js
+
+var Dendy = {
+    list:{},
+    items:{},
+    registerCartridge:function(sid, game, texture){
+        if(Dendy.existCartridge(sid))
+            throw new Error("Данный sid уже был зарегистрирован");
+        texture.color = texture.color || Color.YELLOW;
+        Dendy.list[sid] = {
+            game:game,
+            texture:texture
+        };
+        Dendy.items[ItemID["cartridge_" + sid]] = Dendy.list[sid];
+    },
+    existCartridge:function(sid){
+        return Dendy.list.hasOwnProperty(sid);
+    },
+    isCartridge:function(id){
+        return Dendy.items.hasOwnProperty(id);
+    },
+    getGameFromID:function(id){
+        if(Dendy.isCartridge(id))
+            return Dendy.items[id].game;
+        
+        return null;
+    }
+};
+
+Game.registerCartridge = function(game, name, texture){
+    let sid = game.prototype.sid;
+    let item_sid = "cartridge_" + sid;
+    if(Dendy.existCartridge(sid))
+        throw new Error("Данный sid уже был зарегистрирован");
+
+    IDRegistry.genItemID(item_sid);
+    Item.createItem(item_sid, "Cartridge \""+name+"\"", texture, {stack: 1 });
+    Dendy.registerCartridge(sid, game, texture.color);
+}
+Game.isCartridge = Dendy.isCartridge;
+
+
+
+
+// file: dendy/nogame.js
+
+Dendy.NoGame = function(){}; Game.extends(Dendy.NoGame);
+Dendy.NoGame.prototype.sid = "noGameDendy"
+Dendy.NoGame.prototype.Font = (function(){
+    let paint = new Paint();
+    paint.setARGB(255, 255, 255, 255);
+    paint.setTextAlign(Paint.Align.CENTER);
+    paint.setTypeface(Game.UI.Typeface);
+    paint.setTextSize(50);
+    return paint;
+})();
+Dendy.NoGame.prototype.draw = function(canvas){
+    canvas.drawColor(Color.BLACK);
+    let bounds = new Rect();
+    let textToDraw = "Вставьте картридж";
+    this.Font.getTextBounds(textToDraw, 0, textToDraw.length, bounds);
+    canvas.drawText(textToDraw, canvas.getWidth()/2, (canvas.getHeight()+(bounds.bottom-bounds.top))/2, this.Font);
+}
+Dendy.list.noGameDendy = {
+    game:Dendy.NoGame,
+    texture:{
+        color:Color.TRANSPARENT
+    }
+}
+Dendy.items[null] = Dendy.list.noGameDendy;
+
+
+
+
+// file: dendy/window.js
+
+Dendy.Window = function(settings){
+    Dendy.Window.superclass.constructor.apply(this, arguments);
+    this.__cartridgeView = new RelativeLayout(ctx);
+    
+    //settings.cartridge
+    let params  = new RelativeLayout.LayoutParams(
+        settings.cartridge.width * settings.cartridge.scale,
+        settings.cartridge.height * settings.cartridge.scale);
+    params.setMargins(
+        settings.cartridge.x,
+        settings.cartridge.y,
+        settings.cartridge.x,
+        settings.cartridge.y);
+    settings.cartridge.rules.map(function(i){ params.addRule(i); });
+    this.rootView.addView(this.__cartridgeView, params);
+
+}; Utils.extends(Dendy.Window, Game.StandardWindow);
+Dendy.Window.prototype.setColorCartridge = function(color){
+    this.__cartridgeView.setBackgroundColor(color);
+}
+Dendy.Window.prototype.open = function(id){
+    if(!Dendy.isCartridge(id))
+        throw new Error("Its not cartridge");
+    
+    let cartridge = Dendy.items[id];
+
+    this.game = new cartridge.game();
+    this.setColorCartridge(cartridge.texture.color);
+    
+    Dendy.Window.superclass.open.apply(this, arguments);
+}
+
+
+
+
+// file: dendy/dendy.js
+
+IDRegistry.genBlockID("dendy");
+Block.createBlockWithRotateAndModel("dendy", "Dendy", "dendy", "dendy", { x:0, z:0 });
+
+var DendyCartridgeRender = (function(){
+    let render = new Render();
+    let part = render.getPart("body");
+    part.addBox(5, 20, -6, 4, 3, 1);
+    return render;
+})();
+
+TileEntity.registerPrototype(BlockID.dendy, {
+    defaultValues:{
+        cartridge:null
+    },
+    sendPacketFor:function(ent, name, data){
+        this.networkEntity.send(Network.getClientForPlayer(ent), name, data);
+    },
+
+    hasCartridge:function(){
+        return this.data.cartridge != null;
+    },
+    insertCartridge:function(id, player){
+        if(this.hasCartridge()) return;
+
+        this.data.cartridge = id;
+        this.sendPacket("insert", {cartridge:id})
+        Entity.setCarriedItem(player, 0,0,0);
+    },
+    extractCartridge:function(){
+        if(!this.hasCartridge()) return;
+
+        this.blockSource.spawnDroppedItem(this.x, this.y+1, this.z, this.data.cartridge, 1, 0, null);
+        this.data.cartridge = null;
+        this.sendPacket("extract")
+    },
+    checkTVBox:function(){
+        for(let x = -1; x <= 1; x++)
+            for(let y = -1; y <= 1; y++)
+                for(let z = -1; z <= 1; z++)
+                    if(this.blockSource.getBlockId(this.x + x, this.y + y, this.z + z) == BlockID.tvbox)
+                        return true;
+
+        return false;
+    },
+
+    init:function(){
+        this.tile = this.blockSource.getBlock(this.x, this.y, this.z);
+        alert(this.tile.data);
+    },
+    click:function(id, count, data, coords, player){
+        if(Entity.getSneaking(player)){
+            this.extractCartridge();
+            return;
+        }
+
+        if(Game.isCartridge(id)){
+            if(this.hasCartridge())
+                this.extractCartridge();
+
+            this.insertCartridge(id, player);
+            return;
+        }
+
+        if(this.checkTVBox())
+            this.sendPacketFor(player, "open", {cartridge:this.data.cartridge});
+
+        ICGame.prevent();
+    },
+
+    tick:function(){
+        ICGame.tipMessage("Cartridge: " + this.data.cartridge);
+    },
+    destroyBlock:function(){
+        this.extractCartridge();
+    },
+
+    events:{},
+
+    client:{
+        insertCartridge:function(id){
+            id = id ? Network.serverToLocalId(id) : null;
+
+            let cartridge = Dendy.items[id];
+            let pixels = JavaArray.newInstance(java.lang.Integer.TYPE, 1);
+            pixels[0] = cartridge.texture.color;
+
+            this.animate.describe({
+                skin:"terrain-atlas/" + cartridge.texture.name + "_" + (cartridge.texture.meta || 0) + ".png"
+            });
+            this.animate.load();
+        },
+        extractCartridge:function(){
+            this.animate.destroy();
+        },
+        load:function(){
+            this.animate = new Animation.Base(this.x, this.y, this.z);
+            this.animate.describe({
+                render:DendyCartridgeRender.getRenderType()
+            });
+        },
+
+        events:{
+            open:function(data){
+                let id = data.cartridge;
+                
+                id = id ? Network.serverToLocalId(id) : null;
+
+                DendyWindow.open(id);
+            },
+            insert:function(data){
+                this.insertCartridge(data.cartridge);
+            },
+            extract:function(){
+                this.extractCartridge();
+            }
+        }
+    }
+});
+
+var DendyWindow = new Dendy.Window({
+    window:{
+        file:__dir__ + "gui/arcadeUI.png",
+        bitmap:{
+            x:64,
+            y:0,
+            width:64,
+            height:64
+        },
+        ninePatch:{
+            x:[25, 26, 38, 39],
+            y:[3, 32]
+        },
+        scale:8,
+        border:[16, 3, 16, 29]
+    },
+    exit:{
+        default:{
+            file:__dir__ + "gui/arcadeUI.png",
+            scale:8,
+            bitmap:{
+                x:31,
+                y:58,
+                width:9,
+                height:9
+            }
+        },
+        pressed:{
+            file:__dir__ + "gui/arcadeUI.png",
+            scale:8,
+            bitmap:{
+                x:31,
+                y:67,
+                width:9,
+                height:9
+            }
+        },
+        rules:[RelativeLayout.ALIGN_PARENT_RIGHT],
+        x:8 * 3,
+        y:8 * 3
+    },
+    left:{
+        default:{
+            file:__dir__ + "gui/arcadeUI.png",
+            scale:8,
+            bitmap:{
+                x:0,
+                y:72,
+                width: 7, 
+                height: 7
+            }
+        },
+        pressed:{
+            file:__dir__ + "gui/arcadeUI.png",
+            scale:8,
+            bitmap:{
+                x:0,
+                y:79,
+                width: 7, 
+                height: 7
+            }
+        },
+        rules:[RelativeLayout.ALIGN_PARENT_BOTTOM],
+        x:8 * 4,
+        y:8 * 2
+    },
+    right:{
+        default:{
+            file:__dir__ + "gui/arcadeUI.png",
+            scale:8,
+            bitmap:{
+                x:7,
+                y:72,
+                width: 7, 
+                height: 7
+            }
+        },
+        pressed:{
+            file:__dir__ + "gui/arcadeUI.png",
+            scale:8,
+            bitmap:{
+                x:7,
+                y:79,
+                width: 7, 
+                height: 7
+            }
+        },
+        rules:[RelativeLayout.ALIGN_PARENT_BOTTOM],
+        x:8 * 16,
+        y:8 * 2
+    },
+    up:{
+        default:{
+            file:__dir__ + "gui/arcadeUI.png",
+            scale:8,
+            bitmap:{
+                x:21,
+                y:72,
+                width: 7, 
+                height: 7
+            }
+        },
+        pressed:{
+            file:__dir__ + "gui/arcadeUI.png",
+            scale:8,
+            bitmap:{
+                x:21,
+                y:79,
+                width: 7, 
+                height: 7
+            }
+        },
+        rules:[RelativeLayout.ALIGN_PARENT_BOTTOM, RelativeLayout.ALIGN_PARENT_RIGHT],
+        x:8 * 16,
+        y:8 * 2
+    },
+    down:{
+        default:{
+            file:__dir__ + "gui/arcadeUI.png",
+            scale:8,
+            bitmap:{
+                x:14,
+                y:72,
+                width: 7, 
+                height: 7
+            }
+        },
+        pressed:{
+            file:__dir__ + "gui/arcadeUI.png",
+            scale:8,
+            bitmap:{
+                x:14,
+                y:79,
+                width: 7, 
+                height: 7
+            }
+        },
+        rules:[RelativeLayout.ALIGN_PARENT_BOTTOM, RelativeLayout.ALIGN_PARENT_RIGHT],
+        x:8 * 4,
+        y:8 * 2
+    },
+    cartridge:{
+        width:4,
+        height:2,
+        scale:8,
+        rules:[RelativeLayout.ALIGN_PARENT_BOTTOM, RelativeLayout.CENTER_HORIZONTAL],
+        y:160, x:0
+    },
+    game:Dendy.NoGame
+});
+
+
+
+
+// file: games/tetris.js
 
 var Tetris = function(){
     this.initDefaultValue();
@@ -1005,7 +1578,7 @@ Tetris.prototype.time = 0;
 Tetris.prototype.end = false;
 
 Tetris.prototype.tick = function(delta){
-    this.superclass.tick.apply(this, arguments);
+    Tetris.superclass.tick.apply(this, arguments);
 
     this.time += delta;
     
@@ -1217,10 +1790,16 @@ Tetris.Element.prototype.drawSize = function(canvas, _x, _y, size){
 
 Game.registerGame("tetris", Tetris);
 
+Game.registerCartridge(Tetris, "Tetris", {
+    name:"cartridge",
+    meta:0,
+    color: Color.argb(255, 0, 188, 89)
+});
 
 
 
-// cooler/cooler.js
+
+// file: cooler/cooler.js
 
 IDRegistry.genBlockID("cooler");
 Block.createBlockWithRotateAndModel("cooler", "Refrigerator", "cooler", "cooler", { x:0, z:0 }, "iron_block");
@@ -1249,7 +1828,7 @@ TileEntity.registerPrototype(BlockID.cooler, {
 
 
 
-// cooler/interface.js
+// file: cooler/interface.js
 
 var CoolerInterface = (function(){
     let elements = {};
@@ -1306,7 +1885,7 @@ Translation.addTranslation("Refrigerator", {
 
 
 
-// tv/tv.js
+// file: tv/tv.js
 
 IDRegistry.genBlockID("tvbox");
 Block.createBlockWithRotateAndModel("tvbox", "TV", "tv", "tv", { x:0, z:0 }, "iron_block");
@@ -1314,7 +1893,7 @@ Block.createBlockWithRotateAndModel("tvbox", "TV", "tv", "tv", { x:0, z:0 }, "ir
 
 
 
-// tardis/tardis.js
+// file: tardis/tardis.js
 
 IDRegistry.genBlockID("tardis");
 Block.createBlockWithRotateAndModel("tardis", "Tardis", "tardis", "tardis", { x:0, z:0 }, "tardis", false);
@@ -1409,7 +1988,7 @@ Callback.addCallback("tick", Tardis.tick);
 
 
 
-// decor.js
+// file: decor.js
 
 IDRegistry.genBlockID("lenin");
 Block.createBlockWithRotateAndModel("lenin", "Lenin's bust", "lena bl", "lena_bl", { x:.5, z:.5 });
