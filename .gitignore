@@ -12,3 +12,4 @@ icc.exe
 *.psd
 *.zip
 dev/preloader/sec.js
+Screenshots/*
