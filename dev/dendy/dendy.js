@@ -66,10 +66,6 @@ TileEntity.registerPrototype(BlockID.dendy, {
 
         ICGame.prevent();
     },
-
-    tick:function(){
-        ICGame.tipMessage("Cartridge: " + this.data.cartridge);
-    },
     destroyBlock:function(){
         this.extractCartridge();
     },

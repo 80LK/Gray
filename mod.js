@@ -1152,7 +1152,7 @@ Game.registerCartridge = function(game, name, texture){
 
     IDRegistry.genItemID(item_sid);
     Item.createItem(item_sid, "Cartridge \""+name+"\"", texture, {stack: 1 });
-    Dendy.registerCartridge(sid, game, texture.color);
+    Dendy.registerCartridge(sid, game, texture);
 }
 Game.isCartridge = Dendy.isCartridge;
 
@@ -1231,12 +1231,13 @@ Dendy.Window.prototype.open = function(id){
 IDRegistry.genBlockID("dendy");
 Block.createBlockWithRotateAndModel("dendy", "Dendy", "dendy", "dendy", { x:0, z:0 });
 
-var DendyCartridgeRender = (function(){
-    let render = new Render();
-    let part = render.getPart("body");
-    part.addBox(5, 20, -6, 4, 3, 1);
-    return render;
-})();
+var DendyCartridgeMesh = (function(model){
+    let mesh = new RenderMesh();
+      mesh.importFromFile(__dir__ + "models/"+model+".obj", "obj", null);
+      mesh.translate(.5,0,.5);
+      
+      return mesh;
+})("cartridge");
 
 TileEntity.registerPrototype(BlockID.dendy, {
     defaultValues:{
@@ -1275,9 +1276,9 @@ TileEntity.registerPrototype(BlockID.dendy, {
 
     init:function(){
         this.tile = this.blockSource.getBlock(this.x, this.y, this.z);
-        alert(this.tile.data);
     },
     click:function(id, count, data, coords, player){
+        alert(player + " : " + Entity.getSneaking(player))
         if(Entity.getSneaking(player)){
             this.extractCartridge();
             return;
@@ -1296,15 +1297,18 @@ TileEntity.registerPrototype(BlockID.dendy, {
 
         ICGame.prevent();
     },
-
-    tick:function(){
-        ICGame.tipMessage("Cartridge: " + this.data.cartridge);
-    },
     destroyBlock:function(){
         this.extractCartridge();
     },
 
-    events:{},
+    events:{
+        init:function(){
+            this.sendResponse("init", {
+                data:this.tile.data,
+                cartridge:this.data.cartridge
+            });
+        }
+    },
 
     client:{
         insertCartridge:function(id){
@@ -1318,6 +1322,17 @@ TileEntity.registerPrototype(BlockID.dendy, {
                 skin:"terrain-atlas/" + cartridge.texture.name + "_" + (cartridge.texture.meta || 0) + ".png"
             });
             this.animate.load();
+            let t = this.animate.transform();
+            if(this.data == 2 || this.data == 3)
+                t.rotate(0, Math.PI/2, 0);
+
+            if(this.data == 1){
+                t.translate(2/16, 0, 7/16);
+            }else if(this.data == 2){
+                t.translate(2/16, 0, -9/16);
+            }else if(this.data == 3){
+                t.translate(0, 0, -1);
+            }
         },
         extractCartridge:function(){
             this.animate.destroy();
@@ -1325,11 +1340,18 @@ TileEntity.registerPrototype(BlockID.dendy, {
         load:function(){
             this.animate = new Animation.Base(this.x, this.y, this.z);
             this.animate.describe({
-                render:DendyCartridgeRender.getRenderType()
+                mesh:DendyCartridgeMesh
             });
+
+            this.sendPacket("init")
         },
 
         events:{
+            init:function(data){
+                this.data = data.data;
+                if(data.cartridge)
+                    this.insertCartridge(data.cartridge);
+            },
             open:function(data){
                 let id = data.cartridge;
                 
@@ -1497,6 +1519,10 @@ var DendyWindow = new Dendy.Window({
     },
     game:Dendy.NoGame
 });
+
+Callback.addCallback("LocalTick", function(){
+    ICGame.tipMessage("Player: " + Player.get());
+})
 
 
 
