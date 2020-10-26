@@ -2,7 +2,7 @@
 BUILD INFO:
   dir: dev
   target: mod.js
-  files: 23
+  files: 24
 */
 
 
@@ -483,7 +483,7 @@ GramophoneDisks.registerDisk(508, __dir__ + "sounds/disks/Strad.oga");
 GramophoneDisks.registerDisk(509, __dir__ + "sounds/disks/Ward.oga");
 GramophoneDisks.registerDisk(510, __dir__ + "sounds/disks/11.oga");
 GramophoneDisks.registerDisk(511, __dir__ + "sounds/disks/Wait.oga");
-GramophoneDisks.registerDisk(759, __dir__ + "sounds/disks/Pigstep.ogg");
+//GramophoneDisks.registerDisk(759, __dir__ + "sounds/disks/Pigstep.ogg");
 
 
 
@@ -1278,7 +1278,6 @@ TileEntity.registerPrototype(BlockID.dendy, {
         this.tile = this.blockSource.getBlock(this.x, this.y, this.z);
     },
     click:function(id, count, data, coords, player){
-        alert(player + " : " + Entity.getSneaking(player))
         if(Entity.getSneaking(player)){
             this.extractCartridge();
             return;
@@ -1519,10 +1518,6 @@ var DendyWindow = new Dendy.Window({
     },
     game:Dendy.NoGame
 });
-
-Callback.addCallback("LocalTick", function(){
-    ICGame.tipMessage("Player: " + Player.get());
-})
 
 
 
@@ -2010,6 +2005,30 @@ Saver.addSavesScope("RW_Tardis",
 );
 
 Callback.addCallback("tick", Tardis.tick);
+
+
+
+
+// file: kvass/block.js
+
+IDRegistry.genBlockID("kvass_barrel");
+Block.createBlockWithRotateAndModel("kvass_barrel", "Бочка с квасом", "kvass_barrel", "kvass_barrel", { x:0, z:0 }, "iron_block");
+(function(){
+    let rotates = [
+        [ [1, 0], [0, 1] ]
+    ];
+    for(let i = rotates.length - 1; i >= 0; i--){
+        let CollisionShape = new ICRender.CollisionShape();
+        let Entry = CollisionShape.addEntry();
+        Entry.addBox(0,0,0,1,1,1);
+        //Entry.addBox();
+
+        BlockRenderer.setCustomCollisionShape(BlockID.cooler, i, CollisionShape);
+    }
+})();
+Callback.addCallbac("ItemUse", function(c, i, b){
+    alert(b.data);
+})
 
 
 
