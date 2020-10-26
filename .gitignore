@@ -13,3 +13,4 @@ icc.exe
 *.zip
 dev/preloader/sec.js
 Screenshots/*
+sounds/*

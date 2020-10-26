@@ -10,4 +10,4 @@ GramophoneDisks.registerDisk(508, __dir__ + "sounds/disks/Strad.oga");
 GramophoneDisks.registerDisk(509, __dir__ + "sounds/disks/Ward.oga");
 GramophoneDisks.registerDisk(510, __dir__ + "sounds/disks/11.oga");
 GramophoneDisks.registerDisk(511, __dir__ + "sounds/disks/Wait.oga");
-GramophoneDisks.registerDisk(759, __dir__ + "sounds/disks/Pigstep.ogg");
+//GramophoneDisks.registerDisk(759, __dir__ + "sounds/disks/Pigstep.ogg");

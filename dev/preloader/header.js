@@ -4,6 +4,10 @@ var URL = java.net.URL,
     BufferedInputStream = java.io.BufferedInputStream,
     FileOutputStream = java.io.FileOutputStream;
     
+    FileReader = java.io.FileReader,
+    BufferedReader = java.io.BufferedReader,
+    StringBuilder = java.lang.StringBuilder,
+
     FileInputStream = java.io.FileInputStream,
     ZipInputStream = java.util.zip.ZipInputStream,
     File = java.io.File;
@@ -38,4 +42,16 @@ function unzip(path, path_in){
     } catch(e) {
         alert(e);
     }
+}
+
+function readFile(file){
+    var readed = (new BufferedReader(new FileReader(file)));
+    var data = new StringBuilder();
+    //var data;
+    var string;
+    while ((string = readed.readLine()) != null) {
+        data.append(string);
+        data.append('\n');
+    }
+    return data.toString();
 }
