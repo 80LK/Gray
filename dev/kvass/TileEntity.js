@@ -30,7 +30,6 @@ TileEntity.registerPrototype(BlockID.kvass_barrel, {
             this.extractCup();
     },
     click:function(id, count, data, coords, client){
-        alert(this.data.state + ":" + id + ":" + ItemID.cup);
         switch(this.data.state){
             case EMPTY:
                 if(id == ItemID.cup){

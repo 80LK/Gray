@@ -12,9 +12,13 @@ const DEBUG = (function(){
    var config = FileTools.ReadJSON(__packdir__ + "/innercore/config.json") || {};
    return config["developer_mode"] === true;
 })();
-function getMesh(model){
+function getMesh(model, f){
    let mesh = new RenderMesh();
    mesh.importFromFile(__dir__ + "models/"+model+".obj", "obj", null);
+   
+   if(f && typeof f == "function")
+      f.apply(mesh);
+
    mesh.translate(.5,0,.5);
    return mesh;
 }
