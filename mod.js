@@ -2,7 +2,7 @@
 BUILD INFO:
   dir: dev
   target: mod.js
-  files: 24
+  files: 27
 */
 
 
@@ -23,7 +23,12 @@ const DEBUG = (function(){
    var config = FileTools.ReadJSON(__packdir__ + "/innercore/config.json") || {};
    return config["developer_mode"] === true;
 })();
-
+function getMesh(model){
+   let mesh = new RenderMesh();
+   mesh.importFromFile(__dir__ + "models/"+model+".obj", "obj", null);
+   mesh.translate(.5,0,.5);
+   return mesh;
+}
 Block.createBlockWithRotateAndModel = function(sid, name, model, texture, offset, blockTexture, inCreative){
     if(typeof texture == "string")
         texture = {name:texture};
@@ -249,6 +254,85 @@ let bitmap = new Bitmap.createBitmap(ArcadeUIBitmap, 0, 0, 64, 58);
     return 
 
 */
+
+
+
+
+// file: Animation.Expansion.js
+
+Animation.Expansion = function(){
+    Animation.Expansion.superclass.constructor.apply(this, arguments);
+    this.currentScale = { x:1, y:1, z:1 };
+
+    this.__load = this.load;
+    this.load = function(){
+        this.__load();
+        this.init();
+    }
+
+    this.__loadCustom = this.loadCustom;
+    this.loadCustom = function(f){
+        this.__loadCustom(f);
+        this.init();
+    }
+
+    this.__destroy = this.destroy;
+    this.destroy = function(){
+        this.currentScale = { x:1, y:1, z:1 };
+        this.__destroy();
+    }
+
+}; Utils.extends(Animation.Expansion, Animation.Base);
+
+Animation.Expansion.prototype.scale = function(x, y, z){
+    let t = this.transform();
+    if(!t) throw new Error("Not load animate");
+
+    t.scale(x / this.currentScale.x,
+        y / this.currentScale.y,
+        z / this.currentScale.z);
+    
+    this.currentScale.x = x;
+    this.currentScale.y = y;
+    this.currentScale.z = z;
+    
+    return this;
+}
+Animation.Expansion.prototype.scaleX = function(x){
+    if(x == undefined) return this.currentScale.x;
+    let t = this.transform();
+    if(!t) throw new Error("Not load animate");
+
+    t.scale(x / this.currentScale.x, 1, 1);
+    this.currentScale.x = x;
+    return this;
+}
+Animation.Expansion.prototype.scaleY = function(y){
+    if(y == undefined) return this.currentScale.y;
+    let t = this.transform();
+    if(!t) throw new Error("Not load animate");
+
+    t.scale(1, y / this.currentScale.y, 1);
+    this.currentScale.y = y;
+    return this;
+}
+Animation.Expansion.prototype.scaleZ = function(z){
+    if(z == undefined) return this.currentScale.z;
+    let t = this.transform();
+    if(!t) throw new Error("Not load animate");
+
+    t.scale(1, 1, z / this.currentScale.z);
+    this.currentScale.z = z;
+    return this;
+}
+Animation.Expansion.prototype.inited = false;
+Animation.Expansion.prototype.onInit = function(){};
+Animation.Expansion.prototype.init = function(){
+    if(!this.inited){
+        this.onInit();
+        this.inited = true;
+    }
+}
 
 
 
@@ -2013,22 +2097,197 @@ Callback.addCallback("tick", Tardis.tick);
 
 IDRegistry.genBlockID("kvass_barrel");
 Block.createBlockWithRotateAndModel("kvass_barrel", "Бочка с квасом", "kvass_barrel", "kvass_barrel", { x:0, z:0 }, "iron_block");
+//Colision
 (function(){
     let rotates = [
-        [ [1, 0], [0, 1] ]
+        [[0, -.8125, 1, 1.6875], [0, -.375, 1, 1.125]],
+        [[0, -.6875, 1, 1.8125], [0, -.125, 1, 1.375]],
+        [[-.8125, 0, 1.6875, 1], [-.375, 0, 1.125, 1]],
+        [[-.6875, 0, 1.8125, 1], [-.125, 0, 1.375, 1]],
     ];
-    for(let i = rotates.length - 1; i >= 0; i--){
+    for(let i = 0, l = rotates.length ; i < l; i++){
         let CollisionShape = new ICRender.CollisionShape();
         let Entry = CollisionShape.addEntry();
-        Entry.addBox(0,0,0,1,1,1);
-        //Entry.addBox();
+        
+        Entry.addBox(rotates[i][0][0], 0, rotates[i][0][1], rotates[i][0][2], .375, rotates[i][0][3]);
+        Entry.addBox(rotates[i][1][0], .375, rotates[i][1][1], rotates[i][1][2], 1.25, rotates[i][1][3]);
 
-        BlockRenderer.setCustomCollisionShape(BlockID.cooler, i, CollisionShape);
+        BlockRenderer.setCustomCollisionShape(BlockID.kvass_barrel, i == 0 ? -1 : i, CollisionShape);
     }
 })();
-Callback.addCallbac("ItemUse", function(c, i, b){
-    alert(b.data);
-})
+
+
+
+
+// file: kvass/cup.js
+
+IDRegistry.genItemID("cup");
+Item.createItem("cup", "Cup", { name:"cup_of_kvass" }, {stack: 1 });
+ItemModel.getFor(ItemID.cup).setModel(getMesh("cup"), "terrain-atlas/kvass_barrel_0.png");
+
+IDRegistry.genItemID("kvass_cup");
+Item.createItem("kvass_cup", "Cup Of Kvass", { name:"cup_of_kvass" }, {stack: 1 });
+ItemModel.getFor(ItemID.kvass_cup).setModel(getMesh("cup_full"), "terrain-atlas/kvass_barrel_0.png");
+
+
+
+
+// file: kvass/TileEntity.js
+
+var cupOffset = [
+    [1, 0, 0, 1],
+    [1, 0, 0, -1],
+    [0, 1, 1, 0],
+    [0, -1, 1, 0]
+];
+//var cupRotatte = [];
+
+var meshBox = getMesh("box");
+var liquidMehs = getMesh("cup_liquid");
+
+const EMPTY = 0;
+const WITH_CUP = 1;
+const LOAD = 2;
+const WITH_FULL_CUP = 3;
+
+TileEntity.registerPrototype(BlockID.kvass_barrel, {
+    defaultValues:{state:EMPTY},
+    extractCup:function(){
+        this.sendPacket("extractCup");
+        this.blockSource.spawnDroppedItem(this.x, this.y+1, this.z, this.data.state == WITH_FULL_CUP ? ItemID.kvass_cup : ItemID.cup, 1, 0, null);
+        this.data.state = EMPTY;
+    },
+    init:function(){
+        this.ticks = 0;
+        this.tile = this.blockSource.getBlock(this.x, this.y, this.z);        
+    },
+    destroyBlock:function(){
+        if(this.data.state != EMPTY)
+            this.extractCup();
+    },
+    click:function(id, count, data, coords, client){
+        alert(this.data.state + ":" + id + ":" + ItemID.cup);
+        switch(this.data.state){
+            case EMPTY:
+                if(id == ItemID.cup){
+                    this.sendPacket("insertCup");
+                    Entity.setCarriedItem(client, 0,0,0);
+                    this.data.state = WITH_CUP;
+                }
+                break;
+            case WITH_CUP:
+                if(Entity.getSneaking(client)){
+                    this.extractCup();
+                    break;
+                }
+                this.data.state = LOAD;
+                this.sendPacket("loadCup");
+                break;
+            case WITH_FULL_CUP:
+                this.ticks = 0;
+                this.extractCup();
+            break;
+        }
+    },
+    tick:function(){
+        if(this.data.state == LOAD && ++this.ticks == 60)
+            this.data.state = WITH_FULL_CUP;
+    },
+    events:{
+        init:function(){
+            this.sendResponse("init", {
+                tile:{id:this.tile.id, data:this.tile.data},
+                state:this.data.state
+            });
+        }
+    },
+    client:{
+        extractCup:function(){    
+            this.cup.destroy();
+            this.flow.destroy();
+            this.cupLiquid.destroy();
+        },
+        init:function(data){
+            let r = cupOffset[data.tile.data];
+            this.cup = new Animation.Item(
+                this.x + .5 + (-1 * r[1]),
+                this.y + .5,
+                this.z + .5 + (-1 * r[3]));
+            this.cup.describeItem({
+                id: ItemID.cup,
+                count: 1,
+                data: 0,
+                size: 1,
+                rotation: [0, 0, 0],
+                notRandomize: true
+            });
+            
+            this.flow = new Animation.Expansion(
+                this.x + .234375 + (-.96875 * r[1]),
+                this.y + .71875,
+                this.z + .765625 + (-.96875 * r[3]));
+            this.flow.describe({
+                mesh:meshBox,
+                skin:"textures/kvass_liquid.png"
+            });
+            this.flow.step = .275;
+            this.flow.width = .5;
+            this.flow.height = 5.5;
+            this.flow.onInit = function(){
+                this.transform().rotate(Math.PI, 0, 0)
+            }
+
+
+            this.cupLiquid = new Animation.Expansion(
+                this.x + (-1 * r[1]),
+                this.y + .5,
+                this.z + (-1 * r[3]));
+            this.cupLiquid.describe({
+                    mesh:liquidMehs,
+                    skin:"textures/kvass_liquid.png"
+                });
+        },
+        load:function(){
+            this.sendPacket("init");
+        },
+        unload:function(){
+            this.extractCup();
+        },
+        events:{
+            init:function(data){
+                this.init(data);
+            },
+            insertCup:function(){
+                this.cup.load();
+            },
+            extractCup:function(){
+                this.extractCup();
+            },
+            loadCup:function(){
+                let tick = 0;
+                this.flow.loadCustom(function(){
+                    tick++;
+                    let size = this.scaleX();
+                    let height = this.scaleY();
+                    //if(size < this.width){
+                        //this.scale(size + .05, height + this.step, size + .05);
+                    //}else
+                    if(height < this.height){
+                        this.scaleY(height + this.step);
+                    }
+                });
+                this.flow.scale(.5,.1,.5);
+
+                this.cupLiquid.loadCustom(function(){
+                    if(tick >= 20 && tick < 60)
+                        this.scaleY(this.scaleY() + .125);
+                });
+                this.cupLiquid.scaleY(.1);
+                
+            }
+        }
+    } 
+});
 
 
 

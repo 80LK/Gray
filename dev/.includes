@@ -2,6 +2,7 @@ header.js
 
 utils.js
 Textures.js
+Animation.Expansion.js
 
 radio/API.js
 radio/radio.js
@@ -33,5 +34,7 @@ tv/tv.js
 tardis/tardis.js
 
 kvass/block.js
+kvass/cup.js
+kvass/TileEntity.js
 
 decor.js

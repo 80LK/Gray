@@ -12,7 +12,12 @@ const DEBUG = (function(){
    var config = FileTools.ReadJSON(__packdir__ + "/innercore/config.json") || {};
    return config["developer_mode"] === true;
 })();
-
+function getMesh(model){
+   let mesh = new RenderMesh();
+   mesh.importFromFile(__dir__ + "models/"+model+".obj", "obj", null);
+   mesh.translate(.5,0,.5);
+   return mesh;
+}
 Block.createBlockWithRotateAndModel = function(sid, name, model, texture, offset, blockTexture, inCreative){
     if(typeof texture == "string")
         texture = {name:texture};
